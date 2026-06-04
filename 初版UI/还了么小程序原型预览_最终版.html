@@ -1,0 +1,1102 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>还了么小程序 - 玻璃拟态版原型</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container { max-width: 1400px; margin: 0 auto; }
+        h1 { text-align: center; color: white; margin-bottom: 10px; font-size: 28px; }
+        .subtitle { text-align: center; color: rgba(255,255,255,0.8); margin-bottom: 30px; font-size: 14px; }
+        .phones-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 30px; justify-items: center; }
+        .phone-container {
+            background: rgba(255,255,255,0.15);
+            backdrop-filter: blur(20px);
+            border-radius: 40px;
+            padding: 15px;
+            border: 1px solid rgba(255,255,255,0.2);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+        }
+        .phone-title { text-align: center; margin-bottom: 10px; font-size: 14px; color: white; font-weight: 500; }
+        .phone {
+            width: 320px;
+            height: 640px;
+            background: linear-gradient(135deg, #F8F7FC 0%, #F0EEF9 50%, #E8E6F3 100%);
+            border-radius: 30px;
+            overflow: hidden;
+            position: relative;
+            border: 8px solid rgba(255,255,255,0.6);
+        }
+        .status-bar {
+            height: 24px;
+            background: rgba(255,255,255,0.5);
+            backdrop-filter: blur(10px);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 16px;
+            font-size: 11px;
+            color: #6366F1;
+            font-weight: 500;
+        }
+        .page-content { overflow-y: auto; height: calc(100% - 80px); }
+
+        /* 首页头部 */
+        .home-header {
+            background: rgba(255,255,255,0.6);
+            backdrop-filter: blur(20px);
+            padding: 16px;
+            border-radius: 0 0 24px 24px;
+            border: 1px solid rgba(255,255,255,0.5);
+        }
+        .user-info { display: flex; align-items: center; justify-content: space-between; }
+        .user-left { display: flex; align-items: center; gap: 12px; }
+        .avatar-container { position: relative; }
+        .avatar {
+            width: 48px; height: 48px; border-radius: 50%;
+            background: linear-gradient(135deg, #A78BFA 0%, #8B5CF6 100%);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 24px; border: 3px solid white;
+            box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+        }
+        .avatar-level {
+            position: absolute; bottom: -4px; right: -4px;
+            background: linear-gradient(135deg, #FCD34D 0%, #F59E0B 100%);
+            border-radius: 50%; width: 20px; height: 20px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 10px; border: 2px solid white;
+        }
+        .user-name { color: #1F2937; font-size: 18px; font-weight: 600; }
+        .user-sub { color: #6B7280; font-size: 12px; }
+        .check-in-btn {
+            background: linear-gradient(135deg, #FDE68A 0%, #FCD34D 100%);
+            color: #92400E; padding: 8px 16px;
+            border-radius: 20px; font-size: 12px; font-weight: 600;
+            border: none; box-shadow: 0 4px 12px rgba(245, 158, 11, 0.25);
+        }
+
+        /* 核心按钮 - 长椭圆 */
+        .core-buttons { padding: 16px; display: flex; gap: 12px; }
+        .core-btn {
+            flex: 1; height: 64px; border-radius: 50px;
+            border: none; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            gap: 10px; box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+            transition: transform 0.2s ease;
+        }
+        .core-btn:hover { transform: scale(1.02); }
+        .core-btn-helper {
+            background: linear-gradient(90deg, #C4B5FD 0%, #A78BFA 50%, #8B5CF6 100%);
+        }
+        .core-btn-help {
+            background: linear-gradient(90deg, #FECACA 0%, #F87171 50%, #EF4444 100%);
+        }
+        .core-btn-icon {
+            width: 40px; height: 40px; border-radius: 50%;
+            background: rgba(255,255,255,0.95);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 20px;
+        }
+        .core-btn-text { font-size: 15px; font-weight: 700; color: white; }
+
+        /* 消息入口 */
+        .header-right { display: flex; align-items: center; gap: 8px; }
+        .msg-btn {
+            width: 40px; height: 40px; border-radius: 50%;
+            background: rgba(255,255,255,0.7);
+            border: none; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 18px; position: relative;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .msg-badge {
+            position: absolute; top: -2px; right: -2px;
+            background: #EF4444; color: white;
+            width: 18px; height: 18px; border-radius: 50%;
+            font-size: 10px; font-weight: 600;
+            display: flex; align-items: center; justify-content: center;
+            border: 2px solid #F0EEF9;
+        }
+
+        /* 约定卡片 */
+        .section-header { display: flex; justify-content: space-between; align-items: center; padding: 0 16px; margin-bottom: 12px; }
+        .section-title { font-size: 14px; font-weight: 600; color: #1F2937; display: flex; align-items: center; gap: 6px; }
+        .section-count { background: linear-gradient(135deg, #A78BFA 0%, #8B5CF6 100%); color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+        .section-more { color: #8B5CF6; font-size: 12px; }
+        .agreement-list { padding: 0 16px; }
+        .agreement-card {
+            background: rgba(255,255,255,0.7);
+            backdrop-filter: blur(20px);
+            border-radius: 16px; padding: 14px; margin-bottom: 10px;
+            border: 1px solid rgba(255,255,255,0.6);
+            box-shadow: 0 4px 16px rgba(99, 102, 241, 0.06);
+        }
+        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .card-user { display: flex; align-items: center; gap: 10px; }
+        .card-avatar {
+            width: 36px; height: 36px; border-radius: 50%;
+            background: linear-gradient(135deg, #FDE68A 0%, #F59E0B 100%);
+            display: flex; align-items: center; justify-content: center; font-size: 16px;
+        }
+        .card-name { font-size: 14px; font-weight: 600; color: #1F2937; }
+        .card-type { font-size: 11px; color: #6B7280; }
+        .status-badge { padding: 4px 10px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+        .status-badge.pending { background: linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%); color: #B45309; }
+        .status-badge.active { background: linear-gradient(135deg, #DBEAFE 0%, #BFDBFE 100%); color: #1D4ED8; }
+        .status-badge.completed { background: linear-gradient(135deg, #D1FAE5 0%, #A7F3D0 100%); color: #047857; }
+        .card-body { display: flex; justify-content: space-between; align-items: center; }
+        .card-money { font-size: 18px; font-weight: 700; color: #1F2937; }
+        .card-date { font-size: 12px; color: #6B7280; margin-left: 12px; }
+        .card-action {
+            background: linear-gradient(135deg, #A78BFA 0%, #8B5CF6 100%);
+            color: white; border: none; padding: 6px 16px;
+            border-radius: 16px; font-size: 12px;
+            cursor: pointer; box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+        }
+
+        /* TabBar - 更好看的图标 */
+        .tabbar {
+            position: absolute; bottom: 0; left: 0; right: 0;
+            height: 70px;
+            background: rgba(255,255,255,0.85);
+            backdrop-filter: blur(20px);
+            display: flex; justify-content: space-around; align-items: center;
+            border-top: 1px solid rgba(255,255,255,0.5);
+            box-shadow: 0 -4px 20px rgba(99, 102, 241, 0.05);
+            padding: 0 8px;
+        }
+        .tab-item {
+            display: flex; flex-direction: column; align-items: center;
+            gap: 2px; cursor: pointer; padding: 6px 16px;
+            border-radius: 16px; transition: all 0.3s ease; position: relative;
+        }
+        .tab-item.active { background: linear-gradient(135deg, rgba(167, 139, 250, 0.2) 0%, rgba(139, 92, 246, 0.15) 100%); }
+        .tab-icon-wrapper {
+            width: 32px; height: 32px; position: relative;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .tab-item.active .tab-icon-wrapper::before {
+            content: ''; position: absolute;
+            width: 40px; height: 40px;
+            background: linear-gradient(135deg, #A78BFA 0%, #8B5CF6 100%);
+            border-radius: 12px; opacity: 0.2;
+        }
+        .tab-icon { font-size: 22px; z-index: 1; }
+        .tab-text { font-size: 10px; font-weight: 500; }
+        .tab-item.active .tab-text { color: #7C3AED; font-weight: 600; }
+        .tab-item:not(.active) .tab-text { color: #9CA3AF; }
+
+        /* 表单页面 */
+        .form-header {
+            background: rgba(255,255,255,0.6);
+            backdrop-filter: blur(20px);
+            padding: 12px 16px;
+            display: flex; align-items: center; gap: 12px;
+            border-radius: 0 0 20px 20px;
+        }
+        .back-btn {
+            width: 36px; height: 36px; border-radius: 50%;
+            background: rgba(255,255,255,0.8); border: none;
+            font-size: 18px; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .form-title { font-size: 16px; font-weight: 600; color: #1F2937; }
+        .form-content { padding: 16px; overflow-y: auto; height: calc(100% - 60px); }
+        .form-card {
+            background: rgba(255,255,255,0.7);
+            backdrop-filter: blur(20px);
+            border-radius: 16px; padding: 14px; margin-bottom: 12px;
+            border: 1px solid rgba(255,255,255,0.6);
+        }
+        .user-card {
+            display: flex; align-items: center; gap: 12px;
+            padding: 10px; background: rgba(167, 139, 250, 0.1);
+            border-radius: 14px;
+        }
+        .user-avatar-lg {
+            width: 44px; height: 44px; border-radius: 50%;
+            background: linear-gradient(135deg, #A78BFA 0%, #8B5CF6 100%);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 22px; border: 2px solid white;
+        }
+        .user-name-lg { font-size: 15px; font-weight: 600; color: #1F2937; }
+        .user-badge {
+            display: inline-flex; align-items: center; gap: 4px;
+            background: rgba(245, 158, 11, 0.15);
+            padding: 2px 8px; border-radius: 6px;
+            font-size: 11px; color: #B45309; margin-top: 4px;
+        }
+        .add-btn {
+            width: 44px; height: 44px; border-radius: 50%;
+            background: linear-gradient(135deg, #A78BFA 0%, #8B5CF6 100%);
+            border: none; font-size: 22px; color: white;
+            cursor: pointer;
+        }
+        .tip-box {
+            background: linear-gradient(135deg, rgba(167, 139, 250, 0.15) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border: 1px solid rgba(167, 139, 250, 0.2);
+            border-radius: 14px; padding: 10px 14px;
+            display: flex; align-items: center; gap: 10px; margin-bottom: 12px;
+        }
+        .tip-icon { font-size: 18px; }
+        .tip-text { font-size: 12px; color: #6D28D9; line-height: 1.4; }
+        .form-group { margin-bottom: 12px; }
+        .form-label { font-size: 13px; color: #374151; font-weight: 500; margin-bottom: 6px; display: block; }
+        .form-input {
+            width: 100%; height: 44px;
+            background: rgba(255,255,255,0.8);
+            border: 2px solid rgba(167, 139, 250, 0.2);
+            border-radius: 14px; padding: 0 14px;
+            font-size: 14px; color: #1F2937;
+        }
+        .form-input:focus { outline: none; border-color: #8B5CF6; background: white; }
+        .form-input::placeholder { color: #9CA3AF; }
+        .form-textarea {
+            width: 100%; height: 80px;
+            background: rgba(255,255,255,0.8);
+            border: 2px solid rgba(167, 139, 250, 0.2);
+            border-radius: 14px; padding: 10px 14px;
+            font-size: 13px; color: #1F2937; resize: none;
+        }
+        .form-textarea:focus { outline: none; border-color: #8B5CF6; background: white; }
+        .form-hint { font-size: 11px; color: #6B7280; margin-top: 4px; }
+        .upload-zone {
+            background: rgba(167, 139, 250, 0.08);
+            border: 2px dashed rgba(167, 139, 250, 0.3);
+            border-radius: 14px; padding: 16px;
+            text-align: center; cursor: pointer;
+        }
+        .upload-icon { font-size: 24px; margin-bottom: 6px; }
+        .upload-text { color: #6B7280; font-size: 12px; }
+        .submit-btn-lg {
+            width: 100%; height: 50px;
+            background: linear-gradient(135deg, #A78BFA 0%, #8B5CF6 100%);
+            color: white; border: none; border-radius: 25px;
+            font-size: 15px; font-weight: 700; cursor: pointer;
+            box-shadow: 0 6px 20px rgba(139, 92, 246, 0.35);
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+        }
+
+        /* 账本页面 - 细长进度条 */
+        .ledger-header { padding: 16px; }
+        .date-nav {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 12px;
+        }
+        .date-nav-btn {
+            width: 32px; height: 32px; border-radius: 50%;
+            background: rgba(255,255,255,0.7); border: none;
+            font-size: 14px; cursor: pointer;
+        }
+        .date-month { font-size: 16px; font-weight: 700; color: #1F2937; text-align: center; }
+        .date-week { font-size: 11px; color: #6B7280; text-align: center; }
+        .calendar-btn {
+            width: 32px; height: 32px; border-radius: 50%;
+            background: linear-gradient(135deg, #FDE68A 0%, #F59E0B 100%); border: none;
+            font-size: 14px; cursor: pointer;
+        }
+        /* 细长预算进度条 */
+        .budget-bar {
+            background: rgba(255,255,255,0.7);
+            backdrop-filter: blur(20px);
+            border-radius: 16px; padding: 14px 16px;
+            margin-bottom: 10px;
+            border: 1px solid rgba(255,255,255,0.6);
+        }
+        .budget-top {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 8px;
+        }
+        .budget-label { font-size: 12px; color: #6B7280; }
+        .budget-values { font-size: 13px; color: #1F2937; }
+        .budget-values span { font-weight: 600; color: #7C3AED; }
+        .budget-values .warn { color: #DC2626; }
+        .progress-bar-track {
+            width: 100%; height: 8px;
+            background: rgba(139, 92, 246, 0.15);
+            border-radius: 4px; overflow: hidden;
+        }
+        .progress-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #A78BFA 0%, #8B5CF6 100%);
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+        .budget-summary {
+            display: flex; gap: 8px; margin-top: 10px;
+        }
+        .budget-summary-item {
+            flex: 1; background: rgba(167, 139, 250, 0.08);
+            border-radius: 10px; padding: 10px 8px; text-align: center;
+        }
+        .budget-summary-value { font-size: 14px; font-weight: 700; color: #7C3AED; }
+        .budget-summary-value.orange { color: #C2410C; }
+        .budget-summary-label { font-size: 10px; color: #6B7280; margin-top: 2px; }
+        .date-clickable {
+            cursor: pointer; padding: 4px 10px;
+            border-radius: 10px; transition: background 0.2s;
+        }
+        .date-clickable:hover { background: rgba(167, 139, 250, 0.1); }
+
+        .expense-item {
+            background: rgba(255,255,255,0.7);
+            backdrop-filter: blur(20px);
+            border-radius: 14px; padding: 12px 14px; margin-bottom: 8px;
+            display: flex; align-items: center; gap: 12px;
+            border: 1px solid rgba(255,255,255,0.6);
+        }
+        .expense-icon {
+            width: 40px; height: 40px; border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 20px;
+        }
+        .expense-icon.food { background: linear-gradient(135deg, #FED7AA 0%, #FDBA74 100%); }
+        .expense-icon.transport { background: linear-gradient(135deg, #BFDBFE 0%, #93C5FD 100%); }
+        .expense-icon.coffee { background: linear-gradient(135deg, #D6D3D1 0%, #A8A29E 100%); }
+        .expense-icon.shopping { background: linear-gradient(135deg, #FBCFE8 0%, #F9A8D4 100%); }
+        .expense-name { font-size: 13px; font-weight: 600; color: #1F2937; }
+        .expense-time { font-size: 11px; color: #6B7280; }
+        .expense-amount { font-size: 15px; font-weight: 700; color: #1F2937; }
+        .expense-info { flex: 1; }
+        /* 小号悬浮按钮 */
+        .fab-small {
+            position: absolute; bottom: 78px;
+            left: 50%; transform: translateX(-50%);
+            width: 40px; height: 40px; border-radius: 50%;
+            background: linear-gradient(135deg, #A78BFA 0%, #8B5CF6 100%);
+            border: none; font-size: 18px; color: white;
+            cursor: pointer;
+            box-shadow: 0 4px 16px rgba(139, 92, 246, 0.4);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 10;
+        }
+
+        /* 个人中心 */
+        .profile-header {
+            background: linear-gradient(135deg, #A78BFA 0%, #8B5CF6 50%, #7C3AED 100%);
+            padding: 20px 16px 36px;
+            border-radius: 0 0 36px 36px; text-align: center; position: relative;
+        }
+        .profile-settings {
+            position: absolute; top: 14px; right: 14px;
+            width: 30px; height: 30px; border-radius: 50%;
+            background: rgba(255,255,255,0.3); border: none;
+            font-size: 14px; cursor: pointer;
+        }
+        .profile-avatar {
+            width: 72px; height: 72px; border-radius: 50%;
+            background: white; margin: 0 auto 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 36px; border: 3px solid rgba(255,255,255,0.5);
+        }
+        .profile-name { font-size: 18px; font-weight: 700; color: white; margin-bottom: 8px; }
+        .profile-badges { display: flex; justify-content: center; gap: 6px; }
+        .profile-badge {
+            background: rgba(255,255,255,0.25); padding: 3px 10px;
+            border-radius: 10px; font-size: 10px; color: white;
+        }
+        .profile-stats-card {
+            background: rgba(255,255,255,0.7);
+            backdrop-filter: blur(20px);
+            border-radius: 20px; padding: 16px;
+            margin: -18px 14px 14px;
+            position: relative; z-index: 1;
+            border: 1px solid rgba(255,255,255,0.6);
+        }
+        .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+        .stat-value { font-size: 16px; font-weight: 700; color: #1F2937; }
+        .stat-value.warning { color: #DC2626; }
+        .stat-label { font-size: 10px; color: #6B7280; margin-top: 2px; }
+        .menu-card {
+            background: rgba(255,255,255,0.7);
+            backdrop-filter: blur(20px);
+            border-radius: 16px; overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.6); margin: 0 16px 10px;
+        }
+        .menu-item {
+            display: flex; align-items: center; padding: 14px;
+            border-bottom: 1px solid rgba(167, 139, 250, 0.1);
+            cursor: pointer;
+        }
+        .menu-item:last-child { border-bottom: none; }
+        .menu-icon {
+            width: 36px; height: 36px; border-radius: 10px;
+            background: linear-gradient(135deg, #EDE9FE 0%, #DDD6FE 100%);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 16px; margin-right: 12px;
+        }
+        .menu-text { flex: 1; font-size: 13px; color: #1F2937; font-weight: 500; }
+        .menu-badge {
+            background: #EF4444; color: white; padding: 2px 6px;
+            border-radius: 8px; font-size: 10px; font-weight: 600; margin-right: 6px;
+        }
+        .menu-arrow { color: #9CA3AF; font-size: 16px; }
+        .profile-footer { text-align: center; padding: 16px; color: #6B7280; font-size: 12px; }
+        .logout-btn {
+            width: calc(100% - 32px); height: 44px;
+            background: rgba(255,255,255,0.6);
+            border: 2px solid rgba(167, 139, 250, 0.2);
+            border-radius: 22px; font-size: 13px; color: #6B7280; cursor: pointer;
+            margin: 10px 16px 0;
+        }
+
+        /* 消息中心 */
+        .message-header {
+            background: rgba(255,255,255,0.6);
+            backdrop-filter: blur(20px);
+            padding: 12px 16px;
+            display: flex; justify-content: space-between; align-items: center;
+            border-radius: 0 0 20px 20px;
+        }
+        .message-title { font-size: 15px; font-weight: 600; color: #1F2937; }
+        .message-count {
+            background: #EF4444; color: white; padding: 2px 6px;
+            border-radius: 8px; font-size: 10px; font-weight: 600; margin-left: 4px;
+        }
+        .read-all { background: none; border: none; color: #8B5CF6; font-size: 12px; cursor: pointer; }
+        .message-list { padding: 14px; }
+        .message-section { margin-bottom: 16px; }
+        .message-section-title {
+            font-size: 12px; font-weight: 600; color: #6B7280;
+            margin-bottom: 10px;
+        }
+        .message-card {
+            background: rgba(255,255,255,0.7);
+            backdrop-filter: blur(20px);
+            border-radius: 14px; padding: 12px; margin-bottom: 8px;
+            display: flex; gap: 10px;
+            border: 1px solid rgba(255,255,255,0.6);
+            position: relative;
+        }
+        .message-icon {
+            width: 36px; height: 36px; border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 16px; flex-shrink: 0;
+        }
+        .message-icon.system { background: linear-gradient(135deg, #EDE9FE 0%, #DDD6FE 100%); }
+        .message-icon.reminder { background: linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%); }
+        .message-icon.dynamic { background: linear-gradient(135deg, #D1FAE5 0%, #A7F3D0 100%); }
+        .message-text { font-size: 12px; color: #1F2937; line-height: 1.4; }
+        .message-time { font-size: 10px; color: #6B7280; margin-top: 4px; }
+        .message-action-btn {
+            background: linear-gradient(135deg, #A78BFA 0%, #8B5CF6 100%);
+            color: white; border: none; padding: 4px 10px;
+            border-radius: 10px; font-size: 10px; cursor: pointer; margin-top: 6px;
+        }
+        .unread-dot {
+            width: 8px; height: 8px; background: #EF4444;
+            border-radius: 50%; position: absolute; top: 12px; right: 12px;
+        }
+
+        /* 报表页面 */
+        .report-header { padding: 14px; }
+        .report-title { font-size: 16px; font-weight: 700; color: #1F2937; margin-bottom: 12px; }
+        .filter-chips { display: flex; gap: 8px; }
+        .filter-chip {
+            padding: 5px 12px; border-radius: 14px;
+            font-size: 11px; border: none; cursor: pointer;
+        }
+        .filter-chip.active {
+            background: linear-gradient(135deg, #A78BFA 0%, #8B5CF6 100%);
+            color: white;
+        }
+        .filter-chip:not(.active) { background: rgba(255,255,255,0.7); color: #6B7280; }
+        .chart-card {
+            background: rgba(255,255,255,0.7);
+            backdrop-filter: blur(20px);
+            border-radius: 16px; padding: 14px; margin: 0 14px 12px;
+            border: 1px solid rgba(255,255,255,0.6);
+        }
+        .chart-title { font-size: 13px; font-weight: 600; color: #1F2937; margin-bottom: 12px; }
+        .stats-overview { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 12px; }
+        .stat-box {
+            background: rgba(167, 139, 250, 0.1); border-radius: 10px;
+            padding: 10px 6px; text-align: center;
+        }
+        .stat-box-value { font-size: 14px; font-weight: 700; color: #6D28D9; }
+        .stat-box-label { font-size: 9px; color: #6B7280; margin-top: 2px; }
+        .chart-placeholder {
+            height: 100px;
+            background: linear-gradient(135deg, rgba(167, 139, 250, 0.08) 0%, rgba(139, 92, 246, 0.04) 100%);
+            border-radius: 12px; display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            border: 2px dashed rgba(167, 139, 250, 0.2);
+        }
+        .chart-placeholder-icon { font-size: 28px; margin-bottom: 6px; }
+        .chart-placeholder-text { font-size: 11px; color: #6B7280; }
+        .chart-tip { font-size: 11px; color: #6B7280; margin-top: 10px; }
+        .bar-row { display: flex; align-items: center; margin-bottom: 10px; }
+        .bar-label { width: 32px; font-size: 11px; color: #6B7280; }
+        .bar-track {
+            flex: 1; height: 16px;
+            background: rgba(139, 92, 246, 0.1);
+            border-radius: 8px; overflow: hidden; margin: 0 8px;
+        }
+        .bar-fill { height: 100%; border-radius: 8px; }
+        .bar-fill.lend { background: linear-gradient(90deg, #A78BFA 0%, #8B5CF6 100%); }
+        .bar-fill.borrow { background: linear-gradient(90deg, #FDBA74 0%, #FB923C 100%); }
+        .bar-value { width: 44px; font-size: 11px; font-weight: 600; color: #1F2937; text-align: right; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>还了么 · 玻璃拟态版</h1>
+        <p class="subtitle">淡紫色渐变 × 玻璃透明 × 精致卡片</p>
+        
+        <div class="phones-grid">
+            <!-- 首页 -->
+            <div class="phone-container">
+                <div class="phone-title">🏠 首页</div>
+                <div class="phone">
+                    <div class="status-bar"><span>10:47</span><span>📶 🔋</span></div>
+                    <div class="page-content">
+                        <div class="home-header">
+                            <div class="user-info">
+                                <div class="user-left">
+                                    <div class="avatar-container">
+                                        <div class="avatar">😊</div>
+                                        <div class="avatar-level">⭐</div>
+                                    </div>
+                                    <div>
+                                        <div class="user-name">小明同学</div>
+                                        <div class="user-sub">✨ 今天也要守约哦~</div>
+                                    </div>
+                                </div>
+                                <div class="header-right">
+                                    <button class="msg-btn">
+                                        🔔
+                                        <span class="msg-badge">3</span>
+                                    </button>
+                                    <button class="check-in-btn">✨ 已签到</button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 核心按钮 - 长椭圆 -->
+                        <div class="core-buttons">
+                            <button class="core-btn core-btn-helper">
+                                <div class="core-btn-icon">🤝</div>
+                                <span class="core-btn-text">出手相助</span>
+                            </button>
+                            <button class="core-btn core-btn-help">
+                                <div class="core-btn-icon">🏃</div>
+                                <span class="core-btn-text">江湖救急</span>
+                            </button>
+                        </div>
+                        
+                        <div class="section-header">
+                            <div class="section-title">📋 我的约定 <span class="section-count">3</span></div>
+                            <span class="section-more">查看全部 ›</span>
+                        </div>
+                        
+                        <div class="agreement-list">
+                            <div class="agreement-card">
+                                <div class="card-header">
+                                    <div class="card-user">
+                                        <div class="card-avatar">🐰</div>
+                                        <div><div class="card-name">小李同学</div><div class="card-type">💬 向你求助</div></div>
+                                    </div>
+                                    <span class="status-badge pending">⏳ 待确认</span>
+                                </div>
+                                <div class="card-body">
+                                    <div>
+                                        <span class="card-money">¥2,000</span>
+                                        <span class="card-date">📅 07-25</span>
+                                    </div>
+                                    <button class="card-action">查看详情</button>
+                                </div>
+                            </div>
+                            <div class="agreement-card">
+                                <div class="card-header">
+                                    <div class="card-user">
+                                        <div class="card-avatar">🐼</div>
+                                        <div><div class="card-name">小王同学</div><div class="card-type">🤝 与你的约定</div></div>
+                                    </div>
+                                    <span class="status-badge active">📅 待还款</span>
+                                </div>
+                                <div class="card-body">
+                                    <div>
+                                        <span class="card-money">¥800</span>
+                                        <span class="card-date">📅 07-20</span>
+                                    </div>
+                                    <button class="card-action">标记还款</button>
+                                </div>
+                            </div>
+                            <div class="agreement-card">
+                                <div class="card-header">
+                                    <div class="card-user">
+                                        <div class="card-avatar">🐨</div>
+                                        <div><div class="card-name">小钱同学</div><div class="card-type">🤝 与你的约定</div></div>
+                                    </div>
+                                    <span class="status-badge completed">✅ 已完成</span>
+                                </div>
+                                <div class="card-body">
+                                    <span class="card-money">¥500</span>
+                                    <span class="card-date">🛡️ 守约记录</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="height: 70px;"></div>
+                    </div>
+                    
+                    <!-- TabBar -->
+                    <div class="tabbar">
+                        <div class="tab-item active">
+                            <div class="tab-icon-wrapper"><span class="tab-icon">🏠</span></div>
+                            <span class="tab-text">首页</span>
+                        </div>
+                        <div class="tab-item">
+                            <div class="tab-icon-wrapper"><span class="tab-icon">📊</span></div>
+                            <span class="tab-text">报表</span>
+                        </div>
+                        <div class="tab-item">
+                            <div class="tab-icon-wrapper"><span class="tab-icon">📝</span></div>
+                            <span class="tab-text">账本</span>
+                        </div>
+                        <div class="tab-item">
+                            <div class="tab-icon-wrapper"><span class="tab-icon">👤</span></div>
+                            <span class="tab-text">我的</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 出手相助 -->
+            <div class="phone-container">
+                <div class="phone-title">🤝 出手相助</div>
+                <div class="phone">
+                    <div class="status-bar"><span>10:47</span><span>📶 🔋</span></div>
+                    <div class="form-header">
+                        <button class="back-btn">←</button>
+                        <div class="form-title">☂️ 为TA撑把伞</div>
+                    </div>
+                    <div class="form-content">
+                        <div class="form-card">
+                            <div class="form-group">
+                                <label class="form-label">出借人</label>
+                                <div class="user-card">
+                                    <div class="user-avatar-lg">😊</div>
+                                    <div>
+                                        <div class="user-name-lg">小明同学</div>
+                                        <div class="user-badge">🏆 热心市民 · 🛡️ 95分</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-card">
+                            <div class="form-group">
+                                <label class="form-label">选择借款人</label>
+                                <div class="user-card" style="background: rgba(167, 139, 250, 0.1);">
+                                    <button class="add-btn">+</button>
+                                    <span style="color: #6B7280; font-size: 13px;">从微信好友中选择</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="tip-box">
+                            <span class="tip-icon">💡</span>
+                            <span class="tip-text">信誉良好：对方信誉满分，温暖约定超安心~</span>
+                        </div>
+                        <div class="form-card">
+                            <div class="form-group">
+                                <label class="form-label">💰 借款金额（必填）</label>
+                                <input type="text" class="form-input" value="2,000">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">📅 约定还款日（必填）</label>
+                                <input type="text" class="form-input" value="2024-07-25">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">📝 借款缘由（必填）</label>
+                                <textarea class="form-textarea">项目周转急需资金，7月回款后立即归还！</textarea>
+                                <div class="form-hint">💡 坦诚的缘由让朋友更放心</div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">📎 凭证上传（可选）</label>
+                                <div class="upload-zone">
+                                    <div class="upload-icon">📷</div>
+                                    <div class="upload-text">上传聊天截图/转账记录等 (0/3)</div>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">💬 给TA的专属提醒语</label>
+                                <input type="text" class="form-input" value="还款顺利就好啦~">
+                            </div>
+                        </div>
+                        <button class="submit-btn-lg">📤 发送温暖约定</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 江湖救急 -->
+            <div class="phone-container">
+                <div class="phone-title">🏃 江湖救急</div>
+                <div class="phone">
+                    <div class="status-bar"><span>10:47</span><span>📶 🔋</span></div>
+                    <div class="form-header" style="background: linear-gradient(135deg, rgba(254, 202, 202, 0.3) 0%, rgba(248, 113, 113, 0.2) 100%);">
+                        <button class="back-btn">←</button>
+                        <div class="form-title">🏃 开口是勇敢</div>
+                    </div>
+                    <div class="form-content">
+                        <div class="form-card">
+                            <div class="form-group">
+                                <label class="form-label">求助者</label>
+                                <div class="user-card">
+                                    <div class="user-avatar-lg" style="background: linear-gradient(135deg, #FDBA74 0%, #FB923C 100%);">😊</div>
+                                    <div>
+                                        <div class="user-name-lg">小明同学</div>
+                                        <div class="user-badge" style="background: rgba(249, 115, 22, 0.15); color: #C2410C;">💪 加油！诚实守信</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="tip-box" style="background: linear-gradient(135deg, rgba(254, 202, 202, 0.3) 0%, rgba(248, 113, 113, 0.2) 100%); border-color: rgba(248, 113, 113, 0.2);">
+                            <span class="tip-icon">💪</span>
+                            <span class="tip-text" style="color: #B91C1C;">加油！每一次守约都是成长的养分~</span>
+                        </div>
+                        <div class="form-card">
+                            <div class="form-group">
+                                <label class="form-label">选择帮助你的朋友</label>
+                                <div class="user-card" style="background: rgba(254, 202, 202, 0.2);">
+                                    <button class="add-btn" style="background: linear-gradient(135deg, #FDBA74 0%, #FB923C 100%);">+</button>
+                                    <span style="color: #9A3412; font-size: 13px;">选择愿意帮助你的好友</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-card">
+                            <div class="form-group">
+                                <label class="form-label">💰 求助金额（必填）</label>
+                                <input type="text" class="form-input" placeholder="勇敢说出需要的金额">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">📅 期望还款日（必填）</label>
+                                <input type="text" class="form-input" placeholder="给自己一个期限">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">📝 求助缘由（必填）</label>
+                                <textarea class="form-textarea">突发医疗费用缺口，手术后15天内一定归还！</textarea>
+                                <div class="form-hint">💡 真实的情况让朋友更愿意帮忙</div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">📎 凭证材料（可选）</label>
+                                <div class="upload-zone">
+                                    <div class="upload-icon">🏥</div>
+                                    <div class="upload-text">上传病历/聊天记录等 (0/3)</div>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">💬 想对TA说的话（可选）</label>
+                                <input type="text" class="form-input" value="感谢信任，一定准时归还！">
+                            </div>
+                        </div>
+                        <!-- 发送按钮 - 淡红色风格 -->
+                        <button class="submit-btn-lg" style="background: linear-gradient(90deg, #FECACA 0%, #F87171 50%, #EF4444 100%); box-shadow: 0 6px 20px rgba(248, 113, 113, 0.35);">🏃 发送求助</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 账本页面 -->
+            <div class="phone-container">
+                <div class="phone-title">📝 账本</div>
+                <div class="phone">
+                    <div class="status-bar"><span>10:47</span><span>📶 🔋</span></div>
+                    <div class="page-content">
+                        <div class="ledger-header">
+                            <div class="date-nav">
+                                <button class="date-nav-btn">‹</button>
+                                <div class="date-clickable">
+                                    <div class="date-month">2024年06月01日</div>
+                                    <div class="date-week">🌤️ 星期六</div>
+                                </div>
+                                <button class="date-nav-btn">›</button>
+                            </div>
+                            
+                            <!-- 细长进度条 -->
+                            <div class="budget-bar">
+                                <div class="budget-top">
+                                    <span class="budget-label">🌱 今日预算</span>
+                                    <span class="budget-values"><span>¥85</span> / ¥200</span>
+                                </div>
+                                <div class="progress-bar-track">
+                                    <div class="progress-bar-fill" style="width: 42%;"></div>
+                                </div>
+                                <div class="budget-summary">
+                                    <div class="budget-summary-item">
+                                        <div class="budget-summary-value">¥1,200</div>
+                                        <div class="budget-summary-label">📅 本月预算</div>
+                                    </div>
+                                    <div class="budget-summary-item">
+                                        <div class="budget-summary-value orange">¥680</div>
+                                        <div class="budget-summary-label">📆 本周预算</div>
+                                    </div>
+                                    <div class="budget-summary-item">
+                                        <div class="budget-summary-value">¥200</div>
+                                        <div class="budget-summary-label">☀️ 今日预算</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="section-header" style="padding: 0 16px;">
+                            <div class="section-title">🧾 今日消费</div>
+                        </div>
+                        
+                        <div style="padding: 0 16px;">
+                            <div class="expense-item">
+                                <div class="expense-icon food">🍜</div>
+                                <div class="expense-info">
+                                    <div class="expense-name">午餐</div>
+                                    <div class="expense-time">12:30</div>
+                                </div>
+                                <div class="expense-amount">-¥30</div>
+                            </div>
+                            <div class="expense-item">
+                                <div class="expense-icon transport">🚌</div>
+                                <div class="expense-info">
+                                    <div class="expense-name">地铁</div>
+                                    <div class="expense-time">08:15</div>
+                                </div>
+                                <div class="expense-amount">-¥5</div>
+                            </div>
+                            <div class="expense-item">
+                                <div class="expense-icon coffee">☕</div>
+                                <div class="expense-info">
+                                    <div class="expense-name">咖啡</div>
+                                    <div class="expense-time">15:20</div>
+                                </div>
+                                <div class="expense-amount">-¥25</div>
+                            </div>
+                            <div class="expense-item">
+                                <div class="expense-icon shopping">🛒</div>
+                                <div class="expense-info">
+                                    <div class="expense-name">超市</div>
+                                    <div class="expense-time">18:40</div>
+                                </div>
+                                <div class="expense-amount">-¥25</div>
+                            </div>
+                        </div>
+                        <div style="height: 90px;"></div>
+                    </div>
+                    
+                    <button class="fab-small">✚</button>
+                    
+                    <div class="tabbar">
+                        <div class="tab-item"><div class="tab-icon-wrapper"><span class="tab-icon">🏠</span></div><span class="tab-text">首页</span></div>
+                        <div class="tab-item"><div class="tab-icon-wrapper"><span class="tab-icon">📊</span></div><span class="tab-text">报表</span></div>
+                        <div class="tab-item active"><div class="tab-icon-wrapper"><span class="tab-icon">📝</span></div><span class="tab-text">账本</span></div>
+                        <div class="tab-item"><div class="tab-icon-wrapper"><span class="tab-icon">👤</span></div><span class="tab-text">我的</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 报表 -->
+            <div class="phone-container">
+                <div class="phone-title">📊 报表</div>
+                <div class="phone">
+                    <div class="status-bar"><span>10:47</span><span>📶 🔋</span></div>
+                    <div style="overflow-y: auto; height: calc(100% - 56px);">
+                        <div class="report-header">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                                <div class="report-title">📊 温暖数据 · 2024</div>
+                                <button class="msg-btn">
+                                    🔔
+                                    <span class="msg-badge">3</span>
+                                </button>
+                            </div>
+                            <div class="filter-chips">
+                                <button class="filter-chip active">全部</button>
+                                <button class="filter-chip">出借</button>
+                                <button class="filter-chip">借款</button>
+                            </div>
+                        </div>
+                        
+                        <div class="chart-card">
+                            <div class="chart-title">🌟 年度总览</div>
+                            <div class="stats-overview">
+                                <div class="stat-box"><div class="stat-box-value">120</div><div class="stat-box-label">信誉值</div></div>
+                                <div class="stat-box"><div class="stat-box-value">28</div><div class="stat-box-label">约定次数</div></div>
+                                <div class="stat-box"><div class="stat-box-value">96%</div><div class="stat-box-label">守约率</div></div>
+                                <div class="stat-box"><div class="stat-box-value">152</div><div class="stat-box-label">天</div></div>
+                            </div>
+                        </div>
+                        
+                        <div class="chart-card">
+                            <div class="chart-title">📈 本月趋势</div>
+                            <div class="chart-placeholder">
+                                <span class="chart-placeholder-icon">📈</span>
+                                <span class="chart-placeholder-text">折线图占位</span>
+                            </div>
+                            <div class="chart-tip">💡 7月活跃度↑15%，守约率100%！</div>
+                        </div>
+                        
+                        <div class="chart-card">
+                            <div class="chart-title">💰 金额流向</div>
+                            <div class="bar-row">
+                                <span class="bar-label">出借</span>
+                                <div class="bar-track"><div class="bar-fill lend" style="width: 80%;"></div></div>
+                                <span class="bar-value">¥8,000</span>
+                            </div>
+                            <div class="bar-row">
+                                <span class="bar-label">借款</span>
+                                <div class="bar-track"><div class="bar-fill borrow" style="width: 25%;"></div></div>
+                                <span class="bar-value">¥2,000</span>
+                            </div>
+                            <div class="chart-tip">💡 你是个温暖的给予者 ❤️</div>
+                        </div>
+                        <div style="height: 60px;"></div>
+                    </div>
+                    
+                    <div class="tabbar">
+                        <div class="tab-item"><div class="tab-icon-wrapper"><span class="tab-icon">🏠</span></div><span class="tab-text">首页</span></div>
+                        <div class="tab-item active"><div class="tab-icon-wrapper"><span class="tab-icon">📊</span></div><span class="tab-text">报表</span></div>
+                        <div class="tab-item"><div class="tab-icon-wrapper"><span class="tab-icon">📝</span></div><span class="tab-text">账本</span></div>
+                        <div class="tab-item"><div class="tab-icon-wrapper"><span class="tab-icon">👤</span></div><span class="tab-text">我的</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 个人中心 -->
+            <div class="phone-container">
+                <div class="phone-title">👤 个人中心</div>
+                <div class="phone">
+                    <div class="status-bar"><span>10:47</span><span>📶 🔋</span></div>
+                    <div style="overflow-y: auto; height: calc(100% - 56px);">
+                        <div class="profile-header">
+                            <button class="profile-settings">⚙️</button>
+                            <div class="profile-avatar">😊</div>
+                            <div class="profile-name">小明同学</div>
+                            <div class="profile-badges">
+                                <span class="profile-badge">🏆 热心市民</span>
+                                <span class="profile-badge">🛡️ 95分</span>
+                                <span class="profile-badge">🌟 Lv.5</span>
+                            </div>
+                        </div>
+                        
+                        <div class="profile-stats-card">
+                            <div class="stats-grid">
+                                <div class="stat-item"><div class="stat-value">¥8,200</div><div class="stat-label">出借</div></div>
+                                <div class="stat-item"><div class="stat-value">¥1,800</div><div class="stat-label">借款</div></div>
+                                <div class="stat-item"><div class="stat-value">25</div><div class="stat-label">已完成</div></div>
+                                <div class="stat-item"><div class="stat-value">3</div><div class="stat-label">待完成</div></div>
+                                <div class="stat-item"><div class="stat-value warning">1</div><div class="stat-label">逾期</div></div>
+                                <div class="stat-item"><div class="stat-value">12,800</div><div class="stat-label">温暖值</div></div>
+                            </div>
+                        </div>
+                        
+                        <div class="menu-card">
+                            <div class="menu-item">
+                                <div class="menu-icon">📁</div>
+                                <span class="menu-text">我的凭证</span>
+                                <span class="menu-arrow">›</span>
+                            </div>
+                            <div class="menu-item">
+                                <div class="menu-icon">🔔</div>
+                                <span class="menu-text">消息中心</span>
+                                <span class="menu-badge">12</span>
+                                <span class="menu-arrow">›</span>
+                            </div>
+                            <div class="menu-item">
+                                <div class="menu-icon">❓</div>
+                                <span class="menu-text">帮助中心</span>
+                                <span class="menu-arrow">›</span>
+                            </div>
+                            <div class="menu-item">
+                                <div class="menu-icon">🔒</div>
+                                <span class="menu-text">隐私设置</span>
+                                <span class="menu-arrow">›</span>
+                            </div>
+                            <div class="menu-item">
+                                <div class="menu-icon">❤️</div>
+                                <span class="menu-text">关于我们 v2.1.0</span>
+                                <span class="menu-arrow">›</span>
+                            </div>
+                        </div>
+                        
+                        <div class="profile-footer">
+                            <div>"每一次守约，都是对信任的温柔守护 ❤️"</div>
+                            <button class="logout-btn">🚪 退出登录</button>
+                        </div>
+                        <div style="height: 30px;"></div>
+                    </div>
+                    
+                    <div class="tabbar">
+                        <div class="tab-item"><div class="tab-icon-wrapper"><span class="tab-icon">🏠</span></div><span class="tab-text">首页</span></div>
+                        <div class="tab-item"><div class="tab-icon-wrapper"><span class="tab-icon">📊</span></div><span class="tab-text">报表</span></div>
+                        <div class="tab-item"><div class="tab-icon-wrapper"><span class="tab-icon">📝</span></div><span class="tab-text">账本</span></div>
+                        <div class="tab-item active"><div class="tab-icon-wrapper"><span class="tab-icon">👤</span></div><span class="tab-text">我的</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 消息中心 -->
+            <div class="phone-container">
+                <div class="phone-title">🔔 消息中心</div>
+                <div class="phone">
+                    <div class="status-bar"><span>10:47</span><span>📶 🔋</span></div>
+                    <div class="message-header">
+                        <div class="message-title">消息中心<span class="message-count">12</span></div>
+                        <button class="read-all">全部已读</button>
+                    </div>
+                    <div class="message-list">
+                        <div class="message-section">
+                            <div class="message-section-title">🔔 系统通知 (3)</div>
+                            <div class="message-card">
+                                <div class="message-icon system">📅</div>
+                                <div class="message-content">
+                                    <div class="message-text">🎉 信誉分+5！完成与小李的约定</div>
+                                    <div class="message-time">07-25 10:30</div>
+                                </div>
+                                <div class="unread-dot"></div>
+                            </div>
+                            <div class="message-card">
+                                <div class="message-icon system">📢</div>
+                                <div class="message-content">
+                                    <div class="message-text">【重要】2025信誉重置规则更新啦~</div>
+                                    <div class="message-time">07-20 09:00</div>
+                                </div>
+                                <div class="unread-dot"></div>
+                            </div>
+                        </div>
+                        <div class="message-section">
+                            <div class="message-section-title">⏰ 约定提醒 (7)</div>
+                            <div class="message-card">
+                                <div class="message-icon reminder">⚠️</div>
+                                <div class="message-content">
+                                    <div class="message-text">🚨 07-28到期：还小李 ¥2,000（距今2天）</div>
+                                    <div class="message-time">07-26 08:00</div>
+                                    <button class="message-action-btn">去处理</button>
+                                </div>
+                                <div class="unread-dot"></div>
+                            </div>
+                            <div class="message-card">
+                                <div class="message-icon reminder">✅</div>
+                                <div class="message-content">
+                                    <div class="message-text">小李已确认你的约定~</div>
+                                    <div class="message-time">07-10 16:45</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="message-section">
+                            <div class="message-section-title">🌟 温暖动态 (2)</div>
+                            <div class="message-card">
+                                <div class="message-icon dynamic">🏆</div>
+                                <div class="message-content">
+                                    <div class="message-text">小赵晋升「散财童子」，为他点赞！</div>
+                                    <div class="message-time">07-26 11:00</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="height: 30px;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

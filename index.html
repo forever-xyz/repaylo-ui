@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>还了么 MVP 高保真原型</title>
+  <link rel="stylesheet" href="./style.css" />
+  <link rel="stylesheet" href="./css/checkin.css" />
+</head>
+<body>
+  <main class="prototype-stage">
+    <section class="phone-shell" aria-label="还了么小程序高保真原型">
+      <div class="device-glow glow-a"></div>
+      <div class="device-glow glow-b"></div>
+      <header class="status-bar">
+        <span>10:47</span>
+        <span>5G 88%</span>
+      </header>
+      <div id="app" class="app"></div>
+      <nav class="tabbar" id="tabbar" aria-label="底部导航">
+        <button data-route="home" class="tab active"><span>⌂</span><em>首页</em></button>
+        <button data-route="reports" class="tab"><span>▦</span><em>报表</em></button>
+        <button data-route="ledger" class="tab"><span>✎</span><em>账本</em></button>
+        <button data-route="profile" class="tab"><span>☺</span><em>我的</em></button>
+      </nav>
+    </section>
+  </main>
+  <div id="toast" class="toast" role="status"></div>
+  <script src="./js/checkin.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>

@@ -1,0 +1,7 @@
+{
+  "name": "HuanLeMe MVP High Fidelity Prototype",
+  "id": "huanleme-mvp-high-fidelity-prototype",
+  "api": "1.0.0",
+  "main": "code.js",
+  "editorType": ["figma"]
+}

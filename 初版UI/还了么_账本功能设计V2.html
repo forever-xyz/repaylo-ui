@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>还了么 - 账本功能设计 V2</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif; background: #f5f5f5; min-height: 100vh; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        h1 { text-align: center; color: #333; margin-bottom: 8px; font-size: 24px; }
+        .subtitle { text-align: center; color: #999; margin-bottom: 40px; font-size: 13px; }
+        .section-title { font-size: 18px; color: #333; margin-bottom: 20px; padding-left: 12px; border-left: 3px solid #8b5cf6; }
+        .phone-mockup { width: 375px; height: 812px; background: #f5f5f5; border-radius: 44px; box-shadow: 0 20px 60px rgba(0,0,0,0.15); overflow: hidden; margin: 0 auto 50px; border: 6px solid #1a1a1a; }
+        .phone-screen { height: 100%; overflow-y: auto; }
+        .wx-nav { background: linear-gradient(135deg, #a78bfa 0%, #8b5cf6 100%); padding: 44px 16px 16px; }
+        .wx-nav-title { font-size: 17px; font-weight: 600; text-align: center; color: white; }
+        
+        /* 日期导航 - 改进版 */
+        .date-nav { background: #fff; padding: 20px 16px; display: flex; align-items: center; justify-content: center; position: relative; }
+        .date-nav-bg { position: absolute; top: 0; left: 0; right: 0; height: 60px; background: linear-gradient(180deg, rgba(139,92,246,0.05) 0%, transparent 100%); }
+        .date-btn { width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%); border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 8px rgba(139,92,246,0.1); }
+        .date-btn:active { transform: scale(0.95); background: linear-gradient(135deg, #ede9fe 0%, #ddd6fe 100%); }
+        .date-btn-icon { font-size: 18px; color: #8b5cf6; }
+        .date-content { flex: 1; text-align: center; padding: 0 16px; touch-action: pan-y; cursor: grab; }
+        .date-content:active { cursor: grabbing; }
+        .date-main { font-size: 18px; font-weight: 700; color: #333; }
+        .date-sub { font-size: 13px; color: #999; margin-top: 4px; display: flex; align-items: center; justify-content: center; gap: 6px; }
+        .date-tag { display: inline-block; padding: 2px 8px; background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); color: #92400e; font-size: 11px; border-radius: 4px; font-weight: 500; }
+        
+        /* 滑动提示 */
+        .swipe-hint { display: flex; align-items: center; justify-content: center; gap: 4px; margin-top: 8px; color: #ccc; font-size: 11px; }
+        .swipe-hint span { animation: swipeHint 2s ease-in-out infinite; }
+        @keyframes swipeHint { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+        
+        /* 预算卡片 */
+        .budget-card { background: #fff; margin: 12px 16px; border-radius: 16px; padding: 16px; }
+        .budget-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+        .budget-title { font-size: 15px; font-weight: 600; color: #333; display: flex; align-items: center; gap: 6px; }
+        .budget-chart-link { display: flex; align-items: center; gap: 4px; font-size: 12px; color: #8b5cf6; cursor: pointer; }
+        .budget-chart-link:active { opacity: 0.7; }
+        .budget-progress-wrap { display: flex; align-items: center; gap: 16px; margin-bottom: 16px; }
+        .progress-ring-wrap { position: relative; width: 80px; height: 80px; }
+        .progress-ring-wrap svg { transform: rotate(-90deg); }
+        .progress-center { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; }
+        .progress-percent { font-size: 22px; font-weight: 700; color: #8b5cf6; }
+        .progress-label { font-size: 10px; color: #999; }
+        .budget-summary { flex: 1; }
+        .budget-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; }
+        .budget-row-label { font-size: 13px; color: #666; display: flex; align-items: center; gap: 4px; }
+        .budget-row-value { font-size: 16px; font-weight: 600; color: #333; }
+        .budget-row-value.spent { color: #ef4444; }
+        .budget-row-value.remaining { color: #10b981; }
+        
+        /* 预算类型选择 */
+        .budget-types { display: flex; gap: 8px; }
+        .budget-type { flex: 1; padding: 10px 8px; background: #f9f9f9; border-radius: 10px; text-align: center; cursor: pointer; transition: all 0.2s; border: 1px solid transparent; }
+        .budget-type.active { background: rgba(139,92,246,0.1); border-color: #8b5cf6; }
+        .budget-type:active { transform: scale(0.98); }
+        .budget-type-value { font-size: 16px; font-weight: 700; color: #8b5cf6; }
+        .budget-type-label { font-size: 11px; color: #999; margin-top: 2px; }
+        
+        /* 消费分布入口 */
+        .distribution-card { background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); margin: 12px 16px; border-radius: 16px; padding: 16px; cursor: pointer; }
+        .distribution-card:active { transform: scale(0.98); }
+        .distribution-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .distribution-title { font-size: 15px; font-weight: 600; color: #92400e; display: flex; align-items: center; gap: 6px; }
+        .distribution-arrow { font-size: 16px; color: #92400e; }
+        .distribution-bars { display: flex; flex-direction: column; gap: 8px; }
+        .distribution-bar { display: flex; align-items: center; gap: 8px; }
+        .distribution-bar-icon { font-size: 16px; }
+        .distribution-bar-name { font-size: 13px; color: #92400e; width: 50px; }
+        .distribution-bar-track { flex: 1; height: 8px; background: rgba(255,255,255,0.5); border-radius: 4px; overflow: hidden; }
+        .distribution-bar-fill { height: 100%; background: #92400e; border-radius: 4px; transition: width 0.3s; }
+        .distribution-bar-percent { font-size: 12px; color: #92400e; font-weight: 600; width: 40px; text-align: right; }
+        
+        /* 记录列表 */
+        .record-section { background: #fff; margin: 12px 16px; border-radius: 16px; padding: 16px; }
+        .record-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .record-title { font-size: 15px; font-weight: 600; color: #333; }
+        .record-total { font-size: 14px; color: #ef4444; font-weight: 600; }
+        .record-item { display: flex; align-items: center; padding: 12px 0; border-bottom: 1px solid #f5f5f5; }
+        .record-item:last-child { border-bottom: none; }
+        .record-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; margin-right: 12px; }
+        .record-info { flex: 1; }
+        .record-name { font-size: 15px; font-weight: 500; color: #333; }
+        .record-time { font-size: 12px; color: #999; margin-top: 2px; }
+        .record-amount { font-size: 16px; font-weight: 600; color: #333; }
+        
+        /* 悬浮按钮 */
+        .fab { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); width: 56px; height: 56px; background: linear-gradient(135deg, #a78bfa 0%, #8b5cf6 100%); border-radius: 50%; border: none; color: #fff; font-size: 28px; cursor: pointer; box-shadow: 0 4px 20px rgba(139, 92, 246, 0.4); display: flex; align-items: center; justify-content: center; z-index: 100; }
+        .fab:active { transform: translateX(-50%) scale(0.9); }
+        
+        /* 预算设置弹窗 */
+        .modal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 200; }
+        .modal.show { display: flex; }
+        .modal-content { background: #fff; width: 90%; max-width: 320px; border-radius: 20px; padding: 24px; }
+        .modal-header { text-align: center; margin-bottom: 20px; }
+        .modal-title { font-size: 18px; font-weight: 600; color: #333; }
+        .modal-subtitle { font-size: 13px; color: #999; margin-top: 4px; }
+        .modal-input-wrap { display: flex; align-items: center; justify-content: center; margin-bottom: 20px; }
+        .modal-input { font-size: 36px; font-weight: 700; color: #333; border: none; text-align: center; width: 150px; outline: none; }
+        .modal-input::before { content: '¥'; font-size: 20px; }
+        .modal-actions { display: flex; gap: 12px; }
+        .modal-btn { flex: 1; padding: 12px; border-radius: 10px; font-size: 15px; font-weight: 500; cursor: pointer; border: none; }
+        .modal-btn.cancel { background: #f5f5f5; color: #666; }
+        .modal-btn.confirm { background: linear-gradient(135deg, #a78bfa 0%, #8b5cf6 100%); color: #fff; }
+        .modal-btn:active { transform: scale(0.98); }
+        
+        /* Tab切换 */
+        .tab-bar { background: #fff; padding: 0 16px; display: flex; border-bottom: 1px solid #eee; }
+        .tab-item { flex: 1; padding: 14px 0; text-align: center; font-size: 14px; color: #999; cursor: pointer; position: relative; }
+        .tab-item.active { color: #8b5cf6; font-weight: 600; }
+        .tab-item.active::after { content: ''; position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: 40px; height: 3px; background: #8b5cf6; border-radius: 2px; }
+        
+        /* 分布图表页 */
+        .chart-page { padding: 16px; }
+        .chart-summary { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 16px; }
+        .chart-summary-item { background: #fff; border-radius: 12px; padding: 16px; text-align: center; }
+        .chart-summary-value { font-size: 24px; font-weight: 700; color: #8b5cf6; }
+        .chart-summary-label { font-size: 12px; color: #999; margin-top: 4px; }
+        .chart-summary-item.orange .chart-summary-value { color: #f59e0b; }
+        
+        .pie-chart-wrap { background: #fff; border-radius: 16px; padding: 20px; margin-bottom: 16px; display: flex; justify-content: center; }
+        .pie-legend { background: #fff; border-radius: 16px; padding: 16px; }
+        .legend-item { display: flex; align-items: center; padding: 10px 0; border-bottom: 1px solid #f5f5f5; }
+        .legend-item:last-child { border-bottom: none; }
+        .legend-color { width: 12px; height: 12px; border-radius: 3px; margin-right: 10px; }
+        .legend-name { flex: 1; font-size: 14px; color: #333; }
+        .legend-value { font-size: 14px; font-weight: 600; color: #333; }
+        .legend-percent { font-size: 12px; color: #999; margin-left: 6px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📒 账本功能设计 V2</h1>
+        <p class="subtitle">还了么小程序 - 改进版账本</p>
+
+        <!-- 账本首页 -->
+        <div class="section-title">账本首页 (改进版)</div>
+        <div class="phone-mockup">
+            <div class="phone-screen">
+                <div class="wx-nav"><div class="wx-nav-title">📒 我的账本</div></div>
+                
+                <!-- 日期导航 -->
+                <div class="date-nav">
+                    <div class="date-nav-bg"></div>
+                    <button class="date-btn"><span class="date-btn-icon">‹</span></button>
+                    <div class="date-content" id="dateContent">
+                        <div class="date-main">2024年06月01日</div>
+                        <div class="date-sub">
+                            <span>🗓️ 星期六</span>
+                            <span class="date-tag">今天</span>
+                        </div>
+                    </div>
+                    <button class="date-btn"><span class="date-btn-icon">›</span></button>
+                </div>
+                <div class="swipe-hint">
+                    <span>←</span> 左右滑动切换日期 <span>→</span>
+                </div>
+
+                <!-- 预算卡片 -->
+                <div class="budget-card">
+                    <div class="budget-header">
+                        <div class="budget-title">💰 今日预算</div>
+                        <div class="budget-chart-link">📊 查看分布 →</div>
+                    </div>
+                    <div class="budget-progress-wrap">
+                        <div class="progress-ring-wrap">
+                            <svg width="80" height="80">
+                                <circle cx="40" cy="40" r="32" fill="none" stroke="#f5f5f5" stroke-width="6"/>
+                                <circle cx="40" cy="40" r="32" fill="none" stroke="#8b5cf6" stroke-width="6" stroke-dasharray="60 201" stroke-linecap="round"/>
+                            </svg>
+                            <div class="progress-center">
+                                <div class="progress-percent">30%</div>
+                                <div class="progress-label">已用</div>
+                            </div>
+                        </div>
+                        <div class="budget-summary">
+                            <div class="budget-row">
+                                <span class="budget-row-label">预算</span>
+                                <span class="budget-row-value">¥200</span>
+                            </div>
+                            <div class="budget-row">
+                                <span class="budget-row-label">已花</span>
+                                <span class="budget-row-value spent">-¥60</span>
+                            </div>
+                            <div class="budget-row">
+                                <span class="budget-row-label">剩余</span>
+                                <span class="budget-row-value remaining">¥140</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="budget-types">
+                        <div class="budget-type active">
+                            <div class="budget-type-value">¥200</div>
+                            <div class="budget-type-label">今日预算 (点击设置)</div>
+                        </div>
+                        <div class="budget-type">
+                            <div class="budget-type-value">¥1,200</div>
+                            <div class="budget-type-label">本月预算</div>
+                        </div>
+                        <div class="budget-type">
+                            <div class="budget-type-value">¥680</div>
+                            <div class="budget-type-label">本周预算</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 消费分布入口 -->
+                <div class="distribution-card" onclick="showChartPage()">
+                    <div class="distribution-header">
+                        <div class="distribution-title">🍽️ 今日消费分布</div>
+                        <div class="distribution-arrow">›</div>
+                    </div>
+                    <div class="distribution-bars">
+                        <div class="distribution-bar">
+                            <span class="distribution-bar-icon">🍜</span>
+                            <span class="distribution-bar-name">餐饮</span>
+                            <div class="distribution-bar-track"><div class="distribution-bar-fill" style="width:50%"></div></div>
+                            <span class="distribution-bar-percent">50%</span>
+                        </div>
+                        <div class="distribution-bar">
+                            <span class="distribution-bar-icon">🛒</span>
+                            <span class="distribution-bar-name">购物</span>
+                            <div class="distribution-bar-track"><div class="distribution-bar-fill" style="width:30%"></div></div>
+                            <span class="distribution-bar-percent">30%</span>
+                        </div>
+                        <div class="distribution-bar">
+                            <span class="distribution-bar-icon">🚇</span>
+                            <span class="distribution-bar-name">交通</span>
+                            <div class="distribution-bar-track"><div class="distribution-bar-fill" style="width:20%"></div></div>
+                            <span class="distribution-bar-percent">20%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 记录列表 -->
+                <div class="record-section">
+                    <div class="record-header">
+                        <span class="record-title">📋 今日消费</span>
+                        <span class="record-total">-¥60</span>
+                    </div>
+                    <div class="record-item">
+                        <div class="record-icon" style="background:#fef2f2">🍜</div>
+                        <div class="record-info"><div class="record-name">午餐</div><div class="record-time">12:30</div></div>
+                        <div class="record-amount">-¥30</div>
+                    </div>
+                    <div class="record-item">
+                        <div class="record-icon" style="background:#f0fdf4">🛒</div>
+                        <div class="record-info"><div class="record-name">超市</div><div class="record-time">18:40</div></div>
+                        <div class="record-amount">-¥18</div>
+                    </div>
+                    <div class="record-item">
+                        <div class="record-icon" style="background:#eff6ff">🚇</div>
+                        <div class="record-info"><div class="record-name">地铁</div><div class="record-time">08:15</div></div>
+                        <div class="record-amount">-¥5</div>
+                    </div>
+                    <div class="record-item">
+                        <div class="record-icon" style="background:#fff7ed">☕</div>
+                        <div class="record-info"><div class="record-name">咖啡</div><div class="record-time">15:20</div></div>
+                        <div class="record-amount">-¥7</div>
+                    </div>
+                </div>
+
+                <button class="fab">+</button>
+            </div>
+        </div>
+
+        <!-- 消费分布详情页 -->
+        <div class="section-title">消费分布详情页</div>
+        <div class="phone-mockup">
+            <div class="phone-screen">
+                <div class="wx-nav"><div class="wx-nav-title">📊 消费分布</div></div>
+                
+                <!-- 返回导航 -->
+                <div style="background:#fff;padding:12px 16px;display:flex;align-items:center;border-bottom:1px solid #eee;">
+                    <button style="background:none;border:none;font-size:20px;color:#666;padding:4px;">‹</button>
+                    <span style="flex:1;text-align:center;font-size:16px;font-weight:600;color:#333;">返回</span>
+                </div>
+
+                <!-- 日期Tab -->
+                <div class="tab-bar">
+                    <div class="tab-item active">今天</div>
+                    <div class="tab-item">本周</div>
+                    <div class="tab-item">本月</div>
+                </div>
+
+                <div class="chart-page">
+                    <!-- 统计概览 -->
+                    <div class="chart-summary">
+                        <div class="chart-summary-item">
+                            <div class="chart-summary-value">¥60</div>
+                            <div class="chart-summary-label">总支出</div>
+                        </div>
+                        <div class="chart-summary-item orange">
+                            <div class="chart-summary-value">3</div>
+                            <div class="chart-summary-label">消费笔数</div>
+                        </div>
+                    </div>
+
+                    <!-- 饼图 -->
+                    <div class="pie-chart-wrap">
+                        <svg width="160" height="160" viewBox="0 0 160 160">
+                            <circle cx="80" cy="80" r="60" fill="none" stroke="#fef2f2" stroke-width="20"/>
+                            <circle cx="80" cy="80" r="60" fill="none" stroke="#f59e0b" stroke-width="20" stroke-dasharray="94 283" stroke-dashoffset="0" transform="rotate(-90 80 80)"/>
+                            <circle cx="80" cy="80" r="60" fill="none" stroke="#8b5cf6" stroke-width="20" stroke-dasharray="56 283" stroke-dashoffset="-94" transform="rotate(-90 80 80)"/>
+                            <circle cx="80" cy="80" r="60" fill="none" stroke="#10b981" stroke-dasharray="38 283" stroke-dashoffset="-150" transform="rotate(-90 80 80)"/>
+                        </svg>
+                    </div>
+
+                    <!-- 图例 -->
+                    <div class="pie-legend">
+                        <div class="legend-item">
+                            <div class="legend-color" style="background:#f59e0b"></div>
+                            <div class="legend-name">🍜 餐饮</div>
+                            <div class="legend-value">¥30</div>
+                            <div class="legend-percent">50%</div>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background:#8b5cf6"></div>
+                            <div class="legend-name">🛒 购物</div>
+                            <div class="legend-value">¥18</div>
+                            <div class="legend-percent">30%</div>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background:#10b981"></div>
+                            <div class="legend-name">🚇 交通</div>
+                            <div class="legend-value">¥12</div>
+                            <div class="legend-percent">20%</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 预算设置弹窗 -->
+        <div class="section-title">预算设置弹窗</div>
+        <div class="phone-mockup">
+            <div class="phone-screen" style="display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.5);">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <div class="modal-title">设置今日预算</div>
+                        <div class="modal-subtitle">设置后将在每天自动重置</div>
+                    </div>
+                    <div class="modal-input-wrap">
+                        <input type="text" class="modal-input" value="200">
+                    </div>
+                    <div class="modal-actions">
+                        <button class="modal-btn cancel">取消</button>
+                        <button class="modal-btn confirm">确定</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 简单的滑动切换日期
+        let startX = 0;
+        const dateContent = document.getElementById('dateContent');
+        const dateMain = dateContent.querySelector('.date-main');
+        
+        dateContent.addEventListener('touchstart', (e) => { startX = e.touches[0].clientX; });
+        
+        dateContent.addEventListener('touchend', (e) => {
+            const endX = e.changedTouches[0].clientX;
+            const diff = startX - endX;
+            if (Math.abs(diff) > 50) {
+                if (diff > 0) {
+                    dateMain.textContent = '2024年06月02日';
+                } else {
+                    dateMain.textContent = '2024年05月31日';
+                }
+            }
+        });
+
+        // Tab切换
+        document.querySelectorAll('.tab-item').forEach(tab => {
+            tab.addEventListener('click', function() {
+                document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
+    </script>
+</body>
+</html>

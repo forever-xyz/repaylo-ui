@@ -1,0 +1,342 @@
+.checkin-page {
+  padding-bottom: 10px;
+}
+
+.daily-checkin-card,
+.checkin-calendar-card,
+.credit-reward-card {
+  padding: 15px;
+  margin-bottom: 14px;
+}
+
+.daily-checkin-card {
+  background:
+    radial-gradient(circle at 12% 0%, rgba(187, 247, 208, .44), transparent 32%),
+    radial-gradient(circle at 88% 4%, rgba(196, 181, 253, .36), transparent 36%),
+    linear-gradient(135deg, rgba(255,255,255,.82), rgba(245,243,255,.64));
+}
+
+.daily-head,
+.calendar-toolbar,
+.credit-progress-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.daily-title {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.calendar-mark {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #ede9fe, #c4b5fd);
+  box-shadow: 0 10px 20px rgba(139,92,246,.15);
+}
+
+.daily-title strong {
+  font-size: 18px;
+}
+
+.streak-pill {
+  min-height: 30px;
+  padding: 0 11px;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  color: #6d28d9;
+  background: rgba(237,233,254,.84);
+  font-size: 12px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.daily-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin: 15px 0 12px;
+}
+
+.daily-metrics div {
+  min-height: 68px;
+  padding: 10px 6px;
+  border-radius: 22px;
+  text-align: center;
+  background: rgba(255,255,255,.58);
+  border: 1px solid rgba(255,255,255,.48);
+}
+
+.daily-metrics b {
+  display: block;
+  font-size: 18px;
+  line-height: 22px;
+}
+
+.daily-metrics span {
+  display: block;
+  margin-top: 4px;
+  color: var(--sub);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.today-signed-pill {
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 900;
+  background: linear-gradient(135deg, #86efac, #22c55e 58%, #16a34a);
+  box-shadow: 0 12px 24px rgba(34, 197, 94, .24);
+}
+
+.checkin-calendar-card {
+  background:
+    radial-gradient(circle at 8% 0%, rgba(221,214,254,.32), transparent 30%),
+    linear-gradient(135deg, rgba(255,255,255,.78), rgba(255,255,255,.58));
+}
+
+.calendar-toolbar {
+  margin-bottom: 12px;
+}
+
+.calendar-toolbar button {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  color: #7c3aed;
+  background: rgba(255,255,255,.7);
+  font-size: 24px;
+  line-height: 1;
+  box-shadow: 0 8px 16px rgba(139,92,246,.12);
+}
+
+.calendar-toolbar strong {
+  font-size: 16px;
+}
+
+.weekday-row,
+.checkin-days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 7px;
+}
+
+.weekday-row {
+  margin-bottom: 8px;
+}
+
+.weekday-row span {
+  text-align: center;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.checkin-day {
+  position: relative;
+  height: 34px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  color: #4b5563;
+  background: rgba(255,255,255,.52);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.checkin-day.muted {
+  background: transparent;
+}
+
+.checkin-day.signed {
+  color: #fff;
+  background: linear-gradient(135deg, #a78bfa, #22c55e);
+  box-shadow: 0 7px 16px rgba(34, 197, 94, .15);
+}
+
+.checkin-day.today {
+  outline: 2px solid rgba(139,92,246,.54);
+  outline-offset: 2px;
+}
+
+.checkin-day i {
+  position: absolute;
+  bottom: 4px;
+  width: 4px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.9);
+}
+
+.credit-reward-card {
+  background:
+    radial-gradient(circle at 8% 3%, rgba(187,247,208,.28), transparent 32%),
+    radial-gradient(circle at 88% 10%, rgba(196,181,253,.34), transparent 36%),
+    linear-gradient(135deg, rgba(255,255,255,.78), rgba(245,243,255,.58));
+}
+
+.reward-title h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.reward-title p {
+  margin: 5px 0 13px;
+  color: var(--sub);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.credit-progress-panel {
+  padding: 12px;
+  border-radius: 22px;
+  background: rgba(255,255,255,.56);
+  border: 1px solid rgba(255,255,255,.48);
+}
+
+.credit-progress-head span {
+  color: #6d28d9;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.credit-progress-head b {
+  font-size: 14px;
+}
+
+.credit-track {
+  height: 10px;
+  margin: 11px 0 8px;
+  border-radius: 999px;
+  background: rgba(237,233,254,.86);
+  overflow: hidden;
+}
+
+.credit-track div {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #86efac, #a78bfa, #8b5cf6);
+}
+
+.next-score {
+  color: var(--sub);
+  font-size: 11px;
+  font-weight: 800;
+  text-align: right;
+}
+
+.credit-level-strip {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  margin: 12px -2px;
+  padding: 2px 2px 4px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.credit-level-strip::-webkit-scrollbar {
+  display: none;
+}
+
+.credit-level {
+  flex: 0 0 52px;
+  min-height: 58px;
+  display: grid;
+  place-items: center;
+  gap: 2px;
+  border-radius: 20px;
+  color: var(--sub);
+  background: rgba(255,255,255,.54);
+  border: 1px solid rgba(255,255,255,.45);
+  font-weight: 900;
+}
+
+.credit-level b {
+  font-size: 18px;
+}
+
+.credit-level span {
+  font-size: 11px;
+}
+
+.credit-level.active {
+  color: #fff;
+  background: linear-gradient(135deg, #c4b5fd, #8b5cf6);
+  box-shadow: 0 10px 20px rgba(139,92,246,.22);
+}
+
+.reward-list {
+  display: grid;
+  gap: 9px;
+}
+
+.reward-item {
+  min-height: 70px;
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) 66px;
+  align-items: center;
+  gap: 9px;
+  padding: 10px;
+  border-radius: 22px;
+  background: rgba(255,255,255,.58);
+  border: 1px solid rgba(255,255,255,.46);
+}
+
+.reward-icon {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 16px;
+  background: rgba(237,233,254,.8);
+  font-size: 18px;
+}
+
+.reward-item strong {
+  display: block;
+  font-size: 13px;
+}
+
+.reward-item p {
+  margin: 3px 0 0;
+  color: var(--sub);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.reward-item button {
+  height: 30px;
+  border-radius: 999px;
+  color: #fff;
+  background: linear-gradient(135deg, #a78bfa, #8b5cf6);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.reward-item button.claimed {
+  color: #166534;
+  background: linear-gradient(135deg, #dcfce7, #bbf7d0);
+}
+
+.reward-item button.soft {
+  color: #6d28d9;
+  background: rgba(237,233,254,.86);
+}
+
+.checkin-tip {
+  margin: 12px 2px 0;
+  color: var(--sub);
+  font-size: 12px;
+  line-height: 1.5;
+}

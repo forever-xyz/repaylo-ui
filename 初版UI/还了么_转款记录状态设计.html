@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>还了么 - 转款记录状态设计</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #e0e7ff 0%, #d1e0ff 50%, #e8d5f7 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            text-align: center;
+            color: #4a5568;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #718096;
+            margin-bottom: 40px;
+            font-size: 14px;
+        }
+        
+        /* 状态卡片样式 */
+        .status-section {
+            margin-bottom: 50px;
+        }
+        
+        .section-title {
+            font-size: 20px;
+            color: #4a5568;
+            margin-bottom: 20px;
+            padding-left: 15px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        
+        .status-card {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .status-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 40px rgba(31, 38, 135, 0.15);
+        }
+        
+        .status-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .status-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+            font-size: 24px;
+        }
+        
+        .status-info h3 {
+            font-size: 18px;
+            color: #2d3748;
+            margin-bottom: 5px;
+        }
+        
+        .status-info .english {
+            font-size: 12px;
+            color: #a0aec0;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .status-desc {
+            color: #718096;
+            font-size: 14px;
+            line-height: 1.6;
+            margin-bottom: 15px;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        /* 各状态颜色定义 */
+        /* 1. 草稿 - 灰色系 */
+        .status-draft .status-icon {
+            background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e0 100%);
+            color: #4a5568;
+        }
+        .status-draft .status-badge {
+            background: linear-gradient(135deg, #edf2f7 0%, #e2e8f0 100%);
+            color: #4a5568;
+        }
+        
+        /* 2. 进行中 - 蓝色系 */
+        .status-progress .status-icon {
+            background: linear-gradient(135deg, #63b3ed 0%, #4299e1 100%);
+            color: white;
+        }
+        .status-progress .status-badge {
+            background: linear-gradient(135deg, #bee3f8 0%, #90cdf4 100%);
+            color: #2b6cb0;
+        }
+        
+        /* 3. 待确认 - 橙色系 */
+        .status-pending .status-icon {
+            background: linear-gradient(135deg, #fbd38d 0%, #f6ad55 100%);
+            color: white;
+        }
+        .status-pending .status-badge {
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            color: #b45309;
+        }
+        
+        /* 4. 已完成 - 绿色系 */
+        .status-completed .status-icon {
+            background: linear-gradient(135deg, #68d391 0%, #48bb78 100%);
+            color: white;
+        }
+        .status-completed .status-badge {
+            background: linear-gradient(135deg, #c6f6d5 0%, #9ae6b4 100%);
+            color: #276749;
+        }
+        
+        /* 5. 已逾期 - 红色系 */
+        .status-overdue .status-icon {
+            background: linear-gradient(135deg, #fc8181 0%, #f56565 100%);
+            color: white;
+        }
+        .status-overdue .status-badge {
+            background: linear-gradient(135deg, #fed7d7 0%, #feb2b2 100%);
+            color: #c53030;
+        }
+        
+        /* 6. 延期中 - 紫色系 */
+        .status-extended .status-icon {
+            background: linear-gradient(135deg, #b794f4 0%, #9f7aea 100%);
+            color: white;
+        }
+        .status-extended .status-badge {
+            background: linear-gradient(135deg, #e9d8fd 0%, #d6bcfa 100%);
+            color: #6b46c1;
+        }
+        
+        /* 状态流转图 */
+        .flow-section {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            margin-bottom: 40px;
+        }
+        
+        .flow-diagram {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .flow-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .flow-node {
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-size: 14px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        
+        .flow-arrow {
+            color: #a0aec0;
+            font-size: 20px;
+        }
+        
+        .flow-draft { background: #e2e8f0; color: #4a5568; }
+        .flow-progress { background: #90cdf4; color: #2b6cb0; }
+        .flow-pending { background: #fde68a; color: #b45309; }
+        .flow-completed { background: #9ae6b4; color: #276749; }
+        .flow-overdue { background: #feb2b2; color: #c53030; }
+        .flow-extended { background: #d6bcfa; color: #6b46c1; }
+        
+        /* 颜色规范表 */
+        .color-spec {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+        }
+        
+        .spec-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        
+        .spec-table th,
+        .spec-table td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        }
+        
+        .spec-table th {
+            color: #4a5568;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        
+        .spec-table td {
+            color: #718096;
+            font-size: 14px;
+        }
+        
+        .color-preview {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: inline-block;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .hex-code {
+            font-family: 'Courier New', monospace;
+            background: rgba(0,0,0,0.05);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        
+        /* 实际应用示例 */
+        .example-section {
+            margin-top: 40px;
+        }
+        
+        .example-card {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 20px rgba(31, 38, 135, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .example-info h4 {
+            color: #2d3748;
+            margin-bottom: 5px;
+        }
+        
+        .example-info p {
+            color: #a0aec0;
+            font-size: 13px;
+        }
+        
+        .example-amount {
+            font-size: 20px;
+            font-weight: 700;
+            color: #2d3748;
+            margin-right: 15px;
+        }
+        
+        .example-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        /* 响应式 */
+        @media (max-width: 768px) {
+            .status-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .flow-diagram {
+                flex-direction: column;
+            }
+            
+            .flow-arrow {
+                transform: rotate(90deg);
+            }
+            
+            .spec-table {
+                font-size: 12px;
+            }
+            
+            .spec-table th,
+            .spec-table td {
+                padding: 10px 5px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📝 转款记录状态设计规范</h1>
+        <p class="subtitle">还了么小程序 - 借款记录状态管理系统</p>
+        
+        <!-- 状态流转图 -->
+        <div class="flow-section">
+            <h2 class="section-title">状态流转图</h2>
+            <div class="flow-diagram">
+                <div class="flow-item">
+                    <div class="flow-node flow-draft">草稿</div>
+                    <span class="flow-arrow">→</span>
+                </div>
+                <div class="flow-item">
+                    <div class="flow-node flow-progress">进行中</div>
+                    <span class="flow-arrow">→</span>
+                </div>
+                <div class="flow-item">
+                    <div class="flow-node flow-pending">待确认</div>
+                    <span class="flow-arrow">→</span>
+                </div>
+                <div class="flow-item">
+                    <div class="flow-node flow-completed">已完成</div>
+                </div>
+                <div style="width: 100%; text-align: center; margin: 10px 0;">
+                    <span style="color: #a0aec0;">⬆ 申请延期 ⬇</span>
+                </div>
+                <div class="flow-item">
+                    <div class="flow-node flow-overdue">已逾期</div>
+                    <span class="flow-arrow">⇄</span>
+                </div>
+                <div class="flow-item">
+                    <div class="flow-node flow-extended">延期中</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 状态卡片展示 -->
+        <div class="status-section">
+            <h2 class="section-title">状态卡片设计</h2>
+            <div class="status-grid">
+                <!-- 1. 草稿 -->
+                <div class="status-card status-draft">
+                    <div class="status-header">
+                        <div class="status-icon">📝</div>
+                        <div class="status-info">
+                            <h3>草稿</h3>
+                            <span class="english">Draft</span>
+                        </div>
+                    </div>
+                    <p class="status-desc">
+                        记录已创建并保存，但尚未发送给微信用户。可以编辑或删除此记录。
+                    </p>
+                    <span class="status-badge">可编辑</span>
+                </div>
+                
+                <!-- 2. 进行中 -->
+                <div class="status-card status-progress">
+                    <div class="status-header">
+                        <div class="status-icon">⏳</div>
+                        <div class="status-info">
+                            <h3>进行中</h3>
+                            <span class="english">In Progress</span>
+                        </div>
+                    </div>
+                    <p class="status-desc">
+                        双方已填写完整信息，借款已生效，等待还款日期到来。显示剩余还款天数。
+                    </p>
+                    <span class="status-badge">待还款</span>
+                </div>
+                
+                <!-- 3. 待确认 -->
+                <div class="status-card status-pending">
+                    <div class="status-header">
+                        <div class="status-icon">🤔</div>
+                        <div class="status-info">
+                            <h3>待确认</h3>
+                            <span class="english">Pending Confirm</span>
+                        </div>
+                    </div>
+                    <p class="status-desc">
+                        借款人已还款，等待出借人确认收款。出借人点击确认后状态变为已完成。
+                    </p>
+                    <span class="status-badge">待确认</span>
+                </div>
+                
+                <!-- 4. 已完成 -->
+                <div class="status-card status-completed">
+                    <div class="status-header">
+                        <div class="status-icon">✅</div>
+                        <div class="status-info">
+                            <h3>已完成</h3>
+                            <span class="english">Completed</span>
+                        </div>
+                    </div>
+                    <p class="status-desc">
+                        出借人已确认收款，该笔借款记录已完结。记录将被归档保存。
+                    </p>
+                    <span class="status-badge">已确认</span>
+                </div>
+                
+                <!-- 5. 已逾期 -->
+                <div class="status-card status-overdue">
+                    <div class="status-header">
+                        <div class="status-icon">⚠️</div>
+                        <div class="status-info">
+                            <h3>已逾期</h3>
+                            <span class="english">Overdue</span>
+                        </div>
+                    </div>
+                    <p class="status-desc">
+                        借款人未在规定还款日期前还款。可发起延期申请或催促还款。
+                    </p>
+                    <span class="status-badge">已逾期</span>
+                </div>
+                
+                <!-- 6. 延期中 -->
+                <div class="status-card status-extended">
+                    <div class="status-header">
+                        <div class="status-icon">📅</div>
+                        <div class="status-info">
+                            <h3>延期中</h3>
+                            <span class="english">Extension Approved</span>
+                        </div>
+                    </div>
+                    <p class="status-desc">
+                        借款人申请延期还款，出借人已同意。更新还款日期，状态回到进行中。
+                    </p>
+                    <span class="status-badge">延期中</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 实际应用示例 -->
+        <div class="example-section">
+            <h2 class="section-title">列表页应用示例</h2>
+            
+            <div class="example-card">
+                <div class="example-info">
+                    <h4>借给张三</h4>
+                    <p>2024-01-15 · 生活费周转</p>
+                </div>
+                <div class="example-status">
+                    <span class="example-amount">¥500</span>
+                    <span class="status-badge" style="background: linear-gradient(135deg, #c6f6d5 0%, #9ae6b4 100%); color: #276749;">已完成</span>
+                </div>
+            </div>
+            
+            <div class="example-card">
+                <div class="example-info">
+                    <h4>向李四借款</h4>
+                    <p>2024-01-20 · 买书</p>
+                </div>
+                <div class="example-status">
+                    <span class="example-amount">¥200</span>
+                    <span class="status-badge" style="background: linear-gradient(135deg, #90cdf4 0%, #63b3ed 100%); color: #2b6cb0;">进行中</span>
+                </div>
+            </div>
+            
+            <div class="example-card">
+                <div class="example-info">
+                    <h4>借给王五</h4>
+                    <p>2024-01-10 · 聚餐AA</p>
+                </div>
+                <div class="example-status">
+                    <span class="example-amount">¥150</span>
+                    <span class="status-badge" style="background: linear-gradient(135deg, #feb2b2 0%, #fc8181 100%); color: #c53030;">已逾期</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 颜色规范表 -->
+        <div class="color-spec">
+            <h2 class="section-title">颜色规范表</h2>
+            <table class="spec-table">
+                <thead>
+                    <tr>
+                        <th>状态</th>
+                        <th>图标背景色</th>
+                        <th>Badge背景色</th>
+                        <th>文字颜色</th>
+                        <th>语义</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>草稿</td>
+                        <td><span class="color-preview" style="background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e0 100%);"></span></td>
+                        <td><span class="hex-code">#edf2f7 → #e2e8f0</span></td>
+                        <td><span class="hex-code">#4a5568</span></td>
+                        <td>中性、未完成</td>
+                    </tr>
+                    <tr>
+                        <td>进行中</td>
+                        <td><span class="color-preview" style="background: linear-gradient(135deg, #63b3ed 0%, #4299e1 100%);"></span></td>
+                        <td><span class="hex-code">#bee3f8 → #90cdf4</span></td>
+                        <td><span class="hex-code">#2b6cb0</span></td>
+                        <td>进行中、正常</td>
+                    </tr>
+                    <tr>
+                        <td>待确认</td>
+                        <td><span class="color-preview" style="background: linear-gradient(135deg, #fbd38d 0%, #f6ad55 100%);"></span></td>
+                        <td><span class="hex-code">#fef3c7 → #fde68a</span></td>
+                        <td><span class="hex-code">#b45309</span></td>
+                        <td>等待、注意</td>
+                    </tr>
+                    <tr>
+                        <td>已完成</td>
+                        <td><span class="color-preview" style="background: linear-gradient(135deg, #68d391 0%, #48bb78 100%);"></span></td>
+                        <td><span class="hex-code">#c6f6d5 → #9ae6b4</span></td>
+                        <td><span class="hex-code">#276749</span></td>
+                        <td>成功、完成</td>
+                    </tr>
+                    <tr>
+                        <td>已逾期</td>
+                        <td><span class="color-preview" style="background: linear-gradient(135deg, #fc8181 0%, #f56565 100%);"></span></td>
+                        <td><span class="hex-code">#fed7d7 → #feb2b2</span></td>
+                        <td><span class="hex-code">#c53030</span></td>
+                        <td>警告、逾期</td>
+                    </tr>
+                    <tr>
+                        <td>延期中</td>
+                        <td><span class="color-preview" style="background: linear-gradient(135deg, #b794f4 0%, #9f7aea 100%);"></span></td>
+                        <td><span class="hex-code">#e9d8fd → #d6bcfa</span></td>
+                        <td><span class="hex-code">#6b46c1</span></td>
+                        <td>特殊、延期</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- 设计说明 -->
+        <div style="margin-top: 40px; background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(20px); border-radius: 20px; padding: 30px; box-shadow: 0 8px 32px rgba(31, 38, 135, 0.1); border: 1px solid rgba(255, 255, 255, 0.5);">
+            <h2 class="section-title">设计说明</h2>
+            <div style="color: #718096; line-height: 1.8; font-size: 14px;">
+                <p><strong>状态命名优化：</strong></p>
+                <ul style="margin: 10px 0 20px 20px;">
+                    <li>将"已延期"改为"已逾期" - 明确表示超过还款期限未还款</li>
+                    <li>将"延期中"改为"延期中" - 明确表示延期申请已被同意</li>
+                </ul>
+                
+                <p><strong>颜色语义：</strong></p>
+                <ul style="margin: 10px 0 20px 20px;">
+                    <li>灰色 - 草稿/未完成状态</li>
+                    <li>蓝色 - 正常进行中</li>
+                    <li>橙色 - 需要确认/等待</li>
+                    <li>绿色 - 成功/完成</li>
+                    <li>红色 - 警告/逾期</li>
+                    <li>紫色 - 特殊状态/延期</li>
+                </ul>
+                
+                <p><strong>建议补充的状态（可选）：</strong></p>
+                <ul style="margin: 10px 0 0 20px;">
+                    <li><strong>已拒绝</strong> - 借款人申请延期，但出借人拒绝</li>
+                    <li><strong>已取消</strong> - 草稿状态被用户主动取消/删除</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
