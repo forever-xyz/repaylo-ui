@@ -89,7 +89,7 @@
     `;
   }
 
-  function renderReward(icon, title, desc, action, stateClass) {
+  function renderReward(icon, title, desc, label, stateClass) {
     return `
       <div class="reward-item">
         <span class="reward-icon">${icon}</span>
@@ -97,7 +97,7 @@
           <strong>${title}</strong>
           <p>${desc}</p>
         </div>
-        <button class="${stateClass || ""}">${action}</button>
+        <span class="reward-tag ${stateClass || ""}">${label}</span>
       </div>
     `;
   }
@@ -115,12 +115,15 @@
     return `
       <div class="checkin-page">
         <section class="glass daily-checkin-card">
-          <div class="daily-head">
-            <div class="daily-title">
+          <div class="today-summary">
+            <div class="today-summary-main">
               <span class="calendar-mark">📅</span>
-              <strong>每日签到</strong>
+              <div>
+                <strong>今日已签到</strong>
+                <p>温柔记录已更新，信誉分持续成长</p>
+              </div>
             </div>
-            <span class="streak-pill">${streakIcon} 连续 ${streak} 天</span>
+            <span class="today-score-pill">+10 信誉分</span>
           </div>
 
           <div class="daily-metrics">
@@ -138,7 +141,10 @@
             </div>
           </div>
 
-          <div class="today-signed-pill">✓ 今日已签到 +10分</div>
+          <div class="daily-footnote">
+            <span>${streakIcon} 连续 ${streak} 天</span>
+            <b>明天继续签到，连续天数会保留</b>
+          </div>
         </section>
 
         ${renderCalendar(state)}
@@ -146,7 +152,7 @@
         <section class="glass credit-reward-card">
           <div class="reward-title">
             <h2>信誉成长与奖励</h2>
-            <p>连续签到越久，信誉等级越高，后续可解锁借还权益</p>
+            <p>这里展示签到带来的成长记录，不涉及真实领取或兑换。</p>
           </div>
 
           <div class="credit-progress-panel">
@@ -161,12 +167,12 @@
           ${renderLevelStrip(score)}
 
           <div class="reward-list">
-            ${renderReward("🎁", "连续签到 7 天奖励", "已达成，额外获得 +30 信誉分", "已领取", "claimed")}
-            ${renderReward("⚡", "本月累计签到 20 天", "还差 5 天，可获得一次补签卡", "去完成", "")}
-            ${renderReward("🛡️", "信誉保护提醒", "断签会中断连续天数，但不扣除已有信誉分", "知道了", "soft")}
+            ${renderReward("🎁", "连续签到 7 天", "展示额外 +30 信誉分的成长记录", "已记录", "claimed")}
+            ${renderReward("⚡", "本月累计签到 20 天", "还差 5 天，仅作成长目标展示", "展示中", "")}
+            ${renderReward("🛡️", "信誉保护提醒", "断签只影响连续天数，不扣除已有信誉分", "说明", "soft")}
           </div>
 
-          <p class="checkin-tip">签到可以提升信誉分，信誉分越高，后续可解锁更多借还权益。</p>
+          <p class="checkin-tip">签到用于展示信誉成长趋势，帮助用户感知守约和持续记录带来的正向反馈。</p>
         </section>
       </div>
     `;

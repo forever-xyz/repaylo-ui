@@ -4,9 +4,13 @@ const tabs = document.querySelectorAll(".tabbar .tab");
 
 const state = {
   route: "home",
+  history: [],
   checkedIn: false,
   checkinCelebrating: false,
   checkinMonthOffset: 0,
+  dateFilterOpen: false,
+  agreementYear: 2026,
+  messageTab: "全部",
   score: 520,
   growth: 1280,
   expandedId: null,
@@ -49,15 +53,41 @@ function showToast(message) {
 }
 
 function go(route, params = {}) {
+  if (state.route !== route) {
+    state.history.push({ route: state.route, params: state.params || {} });
+  }
   state.route = route;
   state.params = params;
+  render();
+}
+
+function goBack() {
+  const last = state.history.pop();
+  if (last) {
+    state.route = last.route;
+    state.params = last.params || {};
+  } else {
+    state.route = "home";
+    state.params = {};
+  }
+  render();
+}
+
+function switchTab(route) {
+  state.history = [];
+  state.route = route;
+  state.params = {};
   render();
 }
 
 function nav(title, right = "") {
   const rootTabs = ["home", "reports", "ledger", "profile"];
   if (rootTabs.includes(state.route)) return "";
-  return `<div class="nav nav-quiet"><button onclick="go('home')" aria-label="返回首页">‹</button><span></span>${right || "<span></span>"}</div>`;
+  return `<div class="nav nav-quiet" aria-label="${title}">
+    <button class="back-button" onclick="goBack()" aria-label="返回上一级">‹</button>
+    <span></span>
+    ${right || "<span></span>"}
+  </div>`;
 }
 
 function section(title, action, route) {
@@ -72,7 +102,7 @@ function agreementCard(item) {
   const expanded = state.expandedId === item.id;
   const actionMap = { "草稿": "编辑", "进行中": "查看", "待确认": "去确认", "已完成": "详情", "已逾期": "去处理", "延期中": "查看延期" };
   const action = actionMap[item.status] || "查看详情";
-  const typeIcon = item.type === "出借" ? "🤝 与你的约定" : "💬 向你求助";
+  const agreementNo = agreementNumber(item.id);
   return `
     <article class="agreement-card ${expanded ? "expanded" : ""}" onclick="toggleAgreement(${item.id})">
       <div class="agreement-card-header">
@@ -80,7 +110,7 @@ function agreementCard(item) {
           <div class="card-avatar">${item.avatar}</div>
           <div>
             <div class="card-name">${item.name}</div>
-            <div class="card-type">${typeIcon} · ${item.title}</div>
+            <div class="card-type">${agreementNo}</div>
           </div>
         </div>
         <span class="status-capsule ${item.badge}">${statusIcon(item.status)} ${item.status}</span>
@@ -228,61 +258,181 @@ function dataCard(label, value) {
 
 function renderLend() {
   return formPage("出手相助", "给朋友撑一把伞", "把金额、日期和约定说清楚，关系就少一点尴尬。", [
-    ["借款人", "选择需要帮助的朋友", "input"],
-    ["金额", "请输入金额", "input"],
-    ["还款日期", "选择约定归还日期", "input"],
-    ["借款缘由", "简单说明这笔周转的缘由", "textarea"],
-    ["辅助凭证", "上传聊天记录、合同或说明材料", "input"],
-    ["提醒语", "写一句只有对方可见的温暖提醒", "textarea"]
-  ], "发送约定");
+    ["👤", "借款人", "选择需要帮助的朋友", "input"],
+    ["¥", "金额", "请输入金额", "input"],
+    ["📅", "还款日期", "选择约定归还日期", "input"],
+    ["📝", "借款缘由", "简单说明这笔周转的缘由", "textarea", ["临时周转", "项目采购", "生活应急", "医疗支出"]],
+    ["📎", "辅助凭证", "上传聊天记录、合同或说明材料", "input"],
+    ["💬", "提醒语", "写一句只有对方可见的温暖提醒", "textarea", ["周转顺利就好", "有需要随时说", "按约定来就好", "记得提前沟通"]]
+  ], "发送约定", "lend");
 }
 
 function renderEmergency() {
   return formPage("江湖救急", "有困难，也可以坦诚开口", "把需求和归还计划说清楚，信任会更容易被看见。", [
-    ["出借人", "选择想请求帮助的朋友", "input"],
-    ["金额", "请输入需要周转的金额", "input"],
-    ["还款日期", "选择预计归还日期", "input"],
-    ["借款缘由", "说明遇到的情况", "textarea"],
-    ["辅助凭证", "上传病历、聊天记录或说明材料", "input"],
-    ["补充说明", "写下感谢和归还承诺", "textarea"]
-  ], "发送求助");
+    ["👤", "出借人", "选择想请求帮助的朋友", "input"],
+    ["¥", "金额", "请输入需要周转的金额", "input"],
+    ["📅", "还款日期", "选择预计归还日期", "input"],
+    ["📝", "借款缘由", "说明遇到的情况", "textarea", ["临时周转", "医疗急用", "房租应急", "学习费用"]],
+    ["📎", "辅助凭证", "上传病历、聊天记录或说明材料", "input"],
+    ["💗", "补充说明", "写下感谢和归还承诺", "textarea", ["谢谢你愿意帮我", "我会按时归还", "情况稳定后第一时间处理", "需要我补充说明可以告诉我"]]
+  ], "发送求助", "help");
 }
 
-function formPage(title, hero, desc, fields, submit) {
+function formPage(title, hero, desc, fields, submit, theme = "lend") {
   return `
     ${nav(title)}
-    <section class="glass hero-card" style="min-height:auto;padding:18px;margin-bottom:14px">
-      <h2 style="margin:0 0 6px">${hero}</h2>
-      <p style="margin:0;color:var(--sub);font-size:13px;line-height:1.55">${desc}</p>
+    <section class="glass form-hero form-hero-${theme}">
+      <span>${theme === "lend" ? "🤝" : "💗"}</span>
+      <div>
+        <h2>${hero}</h2>
+        <p>${desc}</p>
+      </div>
     </section>
-    <section class="glass form-card">
-      ${fields.map(([label, placeholder, type]) => `<div class="field"><label>${label}</label>${type === "textarea" ? `<textarea placeholder="${placeholder}"></textarea>` : `<input placeholder="${placeholder}" />`}</div>`).join("")}
-      <p style="font-size:12px;color:var(--muted);line-height:1.5">还了么只记录约定和提醒，不提供资金、担保或催收服务。</p>
-      <div class="action-row"><button class="secondary-btn" onclick="go('home')">取消</button><button class="primary-btn" onclick="showToast('已提交，等待对方确认'); go('detail')">${submit}</button></div>
+    <section class="glass form-card agreement-form-card form-theme-${theme}">
+      <div class="form-section-title"><h3>填写约定信息</h3><span>清楚一点，关系轻一点</span></div>
+      ${fields.map(([icon, label, placeholder, type, options]) => formField(icon, label, placeholder, type, options)).join("")}
+      <div class="form-note-card">
+        <b>温馨提示</b>
+        <p>还了么只记录约定和提醒，不提供资金、担保或催收服务。</p>
+      </div>
+      <div class="action-row form-action-row">
+        <button class="secondary-btn" onclick="goBack()">取消</button>
+        <button class="primary-btn ${theme === "help" ? "help-submit" : "lend-submit"}" onclick="showToast('已提交，等待对方确认'); go('detail')">${submit}</button>
+      </div>
     </section>
-    ${statePanel()}
   `;
+}
+
+function formField(icon, label, placeholder, type, options = []) {
+  const control = type === "textarea"
+    ? `<textarea placeholder="${placeholder}"></textarea>`
+    : `<input placeholder="${placeholder}" />`;
+  const optionChips = options.length
+    ? `<div class="field-options">${options.map(option => `<button type="button" onclick="fillFieldOption(this, '${escapeAttr(option)}')">${option}</button>`).join("")}</div>`
+    : "";
+  return `
+    <div class="field form-field-card">
+      <span class="form-field-icon">${icon}</span>
+      <div>
+        <label>${label}</label>
+        ${optionChips}
+        ${control}
+      </div>
+    </div>
+  `;
+}
+
+function escapeAttr(value) {
+  return String(value).replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+}
+
+function fillFieldOption(button, value) {
+  const field = button.closest(".form-field-card");
+  const control = field && field.querySelector("textarea, input");
+  if (!control) return;
+  control.value = value;
+  field.querySelectorAll(".field-options button").forEach(item => item.classList.toggle("active", item === button));
 }
 
 function renderDetail() {
   const item = agreements.find(x => x.id === (state.params && state.params.id)) || agreements[0];
+  const agreementNo = agreementNumber(item.id);
   return `
     ${nav("约定详情")}
-    <section class="glass hero-card" style="min-height:auto;padding:18px">
-      <span class="badge ${item.badge}">${item.status}</span>
-      <h2 style="font-size:32px;margin:12px 0 4px">${money(item.amount)}</h2>
-      <p style="margin:0;color:var(--sub)">约定归还日：2026-07-05 · ${item.date}</p>
+    <section class="glass hero-card detail-hero">
+      <div class="detail-hero-top">
+        <span class="badge ${item.badge}">${item.status}</span>
+        <span class="detail-no">借条编号 ${agreementNo}</span>
+      </div>
+      <h2>${money(item.amount)}</h2>
+      <p>约定归还日：2026-07-05 · ${item.date}</p>
+      <div class="detail-hero-strip">
+        <span>发起人</span>
+        <b>${item.name}</b>
+      </div>
     </section>
-    <section class="glass form-card" style="margin-top:14px">
-      <div class="row-between"><strong>出借人：我</strong><strong>借款人：${item.name}</strong></div>
-      <hr style="border:0;border-top:1px solid rgba(255,255,255,.55);margin:14px 0">
-      <p><b>借款缘由：</b>${item.reason}</p>
-      <p><b>提醒语：</b>${item.remind}</p>
-      <p><b>凭证：</b>聊天记录 1 张，仅双方可见。</p>
-      <p><b>延期记录：</b>6/20 申请延期至 7/10，状态：已同意。</p>
-      <div class="action-row"><button class="secondary-btn" onclick="go('delay')">申请延期</button><button class="primary-btn" onclick="showToast('确认完成，信誉记录已更新')">确认完成</button></div>
+
+    <section class="glass detail-section">
+      <div class="detail-section-title"><h3>约定信息</h3></div>
+      <div class="detail-info-stack">
+        ${detailInfo("👤", "出借人", "我")}
+        ${detailInfo("🙂", "借款人", item.name)}
+        ${detailInfo("📅", "归还日期", "2026-07-05")}
+        ${detailInfo("📝", "借款缘由", item.reason)}
+      </div>
+      <div class="quote-card">
+        <span>“</span>
+        <p>${item.remind}</p>
+      </div>
     </section>
-    ${statePanel()}
+
+    <section class="glass detail-section">
+      <div class="detail-section-title"><h3>辅助凭证</h3><span>3 张占位</span></div>
+      <div class="voucher-grid">
+        ${voucherTile("聊天记录", "1")}
+        ${voucherTile("转账说明", "2")}
+        ${voucherTile("补充材料", "3")}
+      </div>
+    </section>
+
+    <section class="glass detail-section">
+      <div class="detail-section-title"><h3>约定动态</h3><span>实时记录</span></div>
+      <div class="detail-timeline">
+        ${detailTimeline("今天", "查看约定详情", "你正在确认这份约定的当前状态。")}
+        ${detailTimeline("6/21", "延期状态更新", "双方已确认新的归还计划。")}
+        ${detailTimeline("6/05", "好友确认约定", `${item.name} 已确认这份约定。`)}
+        ${detailTimeline("6/04", "约定已创建", "借条信息、提醒语和凭证已保存。")}
+      </div>
+    </section>
+
+    <section class="glass detail-section">
+      <div class="detail-section-title"><h3>延期记录</h3><span>原因说明</span></div>
+      <div class="detail-timeline compact">
+        ${detailTimeline("6/20", "延期原因", "临时资金安排延后，希望归还日期调整至 2026-07-10。")}
+        ${detailTimeline("6/21", "双方确认", "对方已理解原因，新的归还日期已同步到约定。")}
+      </div>
+    </section>
+
+    <section class="glass credit-file-card">
+      <div class="detail-section-title"><h3>约定时信誉快照</h3><span>双方信息</span></div>
+      <div class="credit-snapshot-grid">
+        ${creditSnapshot("我", state.score, "Lv2 热心市民", "守约率 96%")}
+        ${creditSnapshot(item.name, 486, "Lv2 稳定记录", "完成约定 8 次")}
+      </div>
+    </section>
+
+    <section class="detail-action-dock">
+      <button class="secondary-btn" onclick="go('delay')">申请延期</button>
+      <button class="secondary-btn contact-btn" onclick="showToast('已打开联系入口')">联系对方</button>
+      <button class="primary-btn" onclick="showToast('确认完成，信誉记录已更新')">确认完成</button>
+    </section>
+  `;
+}
+
+function agreementNumber(id) {
+  return `HLM-20260705-${String(id).padStart(4, "0")}`;
+}
+
+function detailInfo(icon, label, value) {
+  return `<div class="detail-info-card"><span>${icon}</span><div><em>${label}</em><strong>${value}</strong></div></div>`;
+}
+
+function voucherTile(title, index) {
+  return `<div class="voucher-tile"><span>📎</span><strong>${title}</strong><em>#${index}</em></div>`;
+}
+
+function detailTimeline(time, title, desc) {
+  return `<div class="detail-timeline-item"><i></i><time>${time}</time><div><strong>${title}</strong><p>${desc}</p></div></div>`;
+}
+
+function creditSnapshot(name, score, level, sub) {
+  return `
+    <div class="credit-snapshot-card">
+      <div class="credit-snapshot-score"><b>${score}</b><span>信芽分</span></div>
+      <strong>${name}</strong>
+      <p>${level}</p>
+      <em>${sub}</em>
+    </div>
   `;
 }
 
@@ -294,21 +444,85 @@ function renderDelay() {
 }
 
 function renderMessages() {
+  const messages = getMessages();
+  const filtered = state.messageTab === "全部" ? messages : messages.filter(item => item.type === state.messageTab);
+  const groups = ["今天", "昨天", "更早"];
   return `
-    ${nav("消息", `<button onclick="showToast('已全部标为已读')">已读</button>`)}
-    <section class="glass form-card">
-      <h2 style="margin:0">12 条未读</h2>
-      <p style="color:var(--sub);font-size:13px">新的约定提醒会出现在这里</p>
-      ${message("约定提醒", "李* 的 ¥2,000 将在 3 天后到期", "b-progress")}
-      ${message("成长通知", "完成约定，信誉分 +5", "b-completed")}
-      ${message("系统通知", "凭证仅约定双方可见", "b-pending")}
+    ${nav("消息")}
+    <section class="glass message-center-page">
+      <div class="message-stats-card">
+        <button class="mark-read-btn" onclick="markAllMessagesRead()">全部已读</button>
+        ${messageStat("未读", "12", "✦")}
+        ${messageStat("约定提醒", countMessages(messages, "约定"), "📌")}
+        ${messageStat("成长通知", countMessages(messages, "成长"), "🌱")}
+        ${messageStat("系统通知", countMessages(messages, "系统"), "◌")}
+      </div>
+
+      <div class="message-tabs">
+        ${["全部", "约定", "成长", "系统"].map(tab => `<button class="${state.messageTab === tab ? "active" : ""}" onclick="setMessageTab('${tab}')">${tab}</button>`).join("")}
+      </div>
+
+      <div class="message-list">
+        ${groups.map(group => renderMessageGroup(group, filtered.filter(item => item.group === group))).join("")}
+      </div>
     </section>
-    ${statePanel()}
   `;
 }
 
-function message(title, sub, badge) {
-  return `<div class="message-item" onclick="go('detail')"><div class="icon-bubble">◌</div><div class="item-main"><strong>${title}</strong><span>${sub}</span></div><span class="badge ${badge}">未读</span></div>`;
+function getMessages() {
+  return [
+    { type: "约定", group: "今天", unread: true, icon: "📌", title: "小李同学的约定即将到期", time: "10:24", summary: "¥2,000 将在 3 天后到期，记得提前沟通。", action: "查看约定", route: "detail" },
+    { type: "成长", group: "今天", unread: true, icon: "🌱", title: "信誉分更新", time: "09:12", summary: "今日签到完成，信芽分 +10，连续记录保持中。", action: "查看成长记录", route: "credit" },
+    { type: "系统", group: "今天", unread: true, icon: "◌", title: "凭证隐私提醒", time: "08:40", summary: "上传凭证仅约定双方可见，请放心保存记录。", action: "查看详情", route: "messages" },
+    { type: "约定", group: "昨天", unread: true, icon: "📅", title: "延期申请已同步", time: "18:30", summary: "小陈同学申请延期至 7/10，等待你查看确认。", action: "查看约定", route: "detail" },
+    { type: "成长", group: "昨天", unread: false, icon: "⭐", title: "完成约定获得成长值", time: "14:06", summary: "你完成一笔聚餐垫付约定，信誉记录更稳定。", action: "查看成长记录", route: "credit" },
+    { type: "系统", group: "更早", unread: false, icon: "🔒", title: "数据安全说明", time: "6/02", summary: "还了么只记录约定与提醒，不提供资金、担保或催收服务。", action: "查看详情", route: "messages" },
+    { type: "约定", group: "更早", unread: false, icon: "📝", title: "草稿约定待完善", time: "5/30", summary: "你有一份备用记录还未发送，可以继续补充信息。", action: "查看约定", route: "agreements" }
+  ];
+}
+
+function countMessages(messages, type) {
+  return messages.filter(item => item.type === type).length;
+}
+
+function messageStat(label, value, icon) {
+  return `<div class="message-stat"><span>${icon}</span><b>${value}</b><em>${label}</em></div>`;
+}
+
+function renderMessageGroup(group, messages) {
+  if (!messages.length) return "";
+  return `
+    <section class="message-group">
+      <h3>${group}</h3>
+      ${messages.map(renderMessageItem).join("")}
+    </section>
+  `;
+}
+
+function renderMessageItem(item) {
+  return `
+    <article class="message-card ${item.unread ? "unread" : ""}">
+      <div class="message-icon ${messageTypeClass(item.type)}">${item.icon}</div>
+      <div class="message-content">
+        <div class="message-title-row"><strong>${item.title}</strong><time>${item.time}</time></div>
+        <p>${item.summary}</p>
+        <button onclick="go('${item.route}')">${item.action}</button>
+      </div>
+    </article>
+  `;
+}
+
+function messageTypeClass(type) {
+  return { "约定": "contract", "成长": "growth", "系统": "system" }[type] || "system";
+}
+
+function setMessageTab(tab) {
+  state.messageTab = tab;
+  render();
+}
+
+function markAllMessagesRead() {
+  showToast("已全部标为已读");
 }
 
 function renderReports() {
@@ -371,33 +585,57 @@ function changeCheckinMonth(delta) {
 
 function renderAgreementList() {
   const filtered = agreements.filter(item => {
-    if (state.filters.type !== "全部" && item.type !== state.filters.type) return false;
-    if (state.filters.status !== "全部" && item.status !== state.filters.status) return false;
-    if (state.filters.amount === "1000以上" && item.amount < 1000) return false;
+    if (state.filters.time !== "全部" && state.filters.time !== "2026-06" && state.filters.time !== "2026-07") return false;
     return true;
   });
   return `
     ${nav("我的约定")}
-    <section class="glass list-page-card">
-      <div class="filters">
-        ${filterSelect("time", ["全部","本月","今年"])}
-        ${filterSelect("type", ["全部","出借","借入"])}
-        ${filterSelect("status", ["全部","草稿","进行中","待确认","已完成","已逾期","延期中"])}
-        ${filterSelect("amount", ["全部","1000以上"])}
-      </div>
+    <section class="glass list-page-card agreement-list-page">
       <div class="searchbar"><span>搜索约定、好友、金额</span><b>搜索</b></div>
+      <div class="date-filter-panel">
+        <button class="date-filter-head" onclick="toggleDateFilter()">
+          <span>📅 年月筛选</span>
+          <b>${state.filters.time === "全部" ? "全部时间" : state.filters.time}</b>
+          <em>${state.dateFilterOpen ? "收起" : "展开"}</em>
+        </button>
+        <div class="date-filter-body ${state.dateFilterOpen ? "open" : ""}">
+          <div class="month-picker-head">
+            <button onclick="changeAgreementYear(-1)" aria-label="上一年">‹</button>
+            <strong>${state.agreementYear}年</strong>
+            <button onclick="changeAgreementYear(1)" aria-label="下一年">›</button>
+          </div>
+          <div class="month-grid">
+            ${Array.from({ length: 12 }, (_, index) => {
+              const month = String(index + 1).padStart(2, "0");
+              return filterChip("time", `${state.agreementYear}-${month}`, `${index + 1}月`);
+            }).join("")}
+          </div>
+          <button class="clear-month-filter" onclick="setFilter('time', '全部')">查看全部时间</button>
+        </div>
+      </div>
       ${filtered.length ? filtered.map(agreementCard).join("") : `<div class="state-box"><strong>Empty</strong><span>没有符合条件的约定</span></div>`}
     </section>
-    ${statePanel()}
   `;
 }
 
-function filterSelect(key, options) {
-  return `<select onchange="setFilter('${key}', this.value)">${options.map(x=>`<option ${state.filters[key]===x?"selected":""}>${x}</option>`).join("")}</select>`;
+function filterChip(key, value, label) {
+  const active = state.filters[key] === value;
+  return `<button class="filter-chip ${active ? "active" : ""}" onclick="setFilter('${key}', '${value}')">${label}</button>`;
 }
 
 function setFilter(key, value) {
   state.filters[key] = value;
+  render();
+}
+
+function toggleDateFilter() {
+  state.dateFilterOpen = !state.dateFilterOpen;
+  render();
+}
+
+function changeAgreementYear(delta) {
+  state.agreementYear += delta;
+  state.filters.time = "全部";
   render();
 }
 
@@ -427,13 +665,19 @@ function render() {
   }
 }
 
-tabs.forEach(tab => tab.addEventListener("click", () => go(tab.dataset.route)));
+tabs.forEach(tab => tab.addEventListener("click", () => switchTab(tab.dataset.route)));
 window.go = go;
+window.goBack = goBack;
 window.toggleAgreement = toggleAgreement;
 window.handleCheckinClick = handleCheckinClick;
 window.showToast = showToast;
 window.setFilter = setFilter;
+window.toggleDateFilter = toggleDateFilter;
+window.changeAgreementYear = changeAgreementYear;
 window.changeCheckinMonth = changeCheckinMonth;
+window.fillFieldOption = fillFieldOption;
+window.setMessageTab = setMessageTab;
+window.markAllMessagesRead = markAllMessagesRead;
 
 render();
 
