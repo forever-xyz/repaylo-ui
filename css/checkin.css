@@ -16,7 +16,7 @@
     linear-gradient(135deg, rgba(255,255,255,.82), rgba(245,243,255,.64));
 }
 
-.daily-head,
+.today-summary,
 .calendar-toolbar,
 .credit-progress-head {
   display: flex;
@@ -25,34 +25,47 @@
   gap: 10px;
 }
 
-.daily-title {
+.today-summary-main {
   display: flex;
   align-items: center;
   gap: 9px;
+  min-width: 0;
 }
 
 .calendar-mark {
-  width: 38px;
-  height: 38px;
+  flex: 0 0 40px;
+  width: 40px;
+  height: 40px;
   display: grid;
   place-items: center;
   border-radius: 16px;
-  background: linear-gradient(135deg, #ede9fe, #c4b5fd);
+  background: linear-gradient(135deg, rgba(237,233,254,.9), rgba(196,181,253,.62));
   box-shadow: 0 10px 20px rgba(139,92,246,.15);
 }
 
-.daily-title strong {
+.today-summary strong {
+  display: block;
   font-size: 18px;
 }
 
-.streak-pill {
+.today-summary p {
+  margin: 3px 0 0;
+  color: var(--sub);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.today-score-pill {
+  flex: 0 0 auto;
   min-height: 30px;
-  padding: 0 11px;
+  padding: 0 10px;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   border-radius: 999px;
-  color: #6d28d9;
-  background: rgba(237,233,254,.84);
+  color: #166534;
+  background: rgba(220,252,231,.82);
+  border: 1px solid rgba(187,247,208,.86);
   font-size: 12px;
   font-weight: 900;
   white-space: nowrap;
@@ -62,13 +75,13 @@
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 8px;
-  margin: 15px 0 12px;
+  margin: 13px 0 10px;
 }
 
 .daily-metrics div {
-  min-height: 68px;
-  padding: 10px 6px;
-  border-radius: 22px;
+  min-height: 58px;
+  padding: 8px 6px;
+  border-radius: 18px;
   text-align: center;
   background: rgba(255,255,255,.58);
   border: 1px solid rgba(255,255,255,.48);
@@ -88,16 +101,27 @@
   font-weight: 800;
 }
 
-.today-signed-pill {
-  height: 44px;
-  display: grid;
-  place-items: center;
+.daily-footnote {
+  min-height: 34px;
+  padding: 7px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   border-radius: 999px;
-  color: #fff;
-  font-size: 14px;
+  color: #6d28d9;
+  background: rgba(237,233,254,.62);
+  font-size: 11px;
   font-weight: 900;
-  background: linear-gradient(135deg, #86efac, #22c55e 58%, #16a34a);
-  box-shadow: 0 12px 24px rgba(34, 197, 94, .24);
+}
+
+.daily-footnote b {
+  min-width: 0;
+  color: var(--sub);
+  font-weight: 800;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .checkin-calendar-card {
@@ -160,23 +184,24 @@
 }
 
 .checkin-day.signed {
-  color: #fff;
-  background: linear-gradient(135deg, #a78bfa, #22c55e);
-  box-shadow: 0 7px 16px rgba(34, 197, 94, .15);
+  color: #166534;
+  background: linear-gradient(135deg, rgba(220,252,231,.84), rgba(237,233,254,.74));
+  border: 1px solid rgba(187,247,208,.9);
+  box-shadow: 0 6px 14px rgba(139,92,246,.08);
 }
 
 .checkin-day.today {
-  outline: 2px solid rgba(139,92,246,.54);
+  outline: 1.5px solid rgba(139,92,246,.48);
   outline-offset: 2px;
 }
 
 .checkin-day i {
   position: absolute;
   bottom: 4px;
-  width: 4px;
-  height: 4px;
+  width: 5px;
+  height: 5px;
   border-radius: 999px;
-  background: rgba(255,255,255,.9);
+  background: rgba(34,166,90,.68);
 }
 
 .credit-reward-card {
@@ -284,7 +309,7 @@
 .reward-item {
   min-height: 70px;
   display: grid;
-  grid-template-columns: 40px minmax(0, 1fr) 66px;
+  grid-template-columns: 40px minmax(0, 1fr) 58px;
   align-items: center;
   gap: 9px;
   padding: 10px;
@@ -315,21 +340,26 @@
   line-height: 1.35;
 }
 
-.reward-item button {
-  height: 30px;
+.reward-tag {
+  min-height: 28px;
+  padding: 0 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 999px;
-  color: #fff;
-  background: linear-gradient(135deg, #a78bfa, #8b5cf6);
+  color: #6d28d9;
+  background: rgba(237,233,254,.86);
   font-size: 11px;
   font-weight: 900;
+  white-space: nowrap;
 }
 
-.reward-item button.claimed {
+.reward-tag.claimed {
   color: #166534;
   background: linear-gradient(135deg, #dcfce7, #bbf7d0);
 }
 
-.reward-item button.soft {
+.reward-tag.soft {
   color: #6d28d9;
   background: rgba(237,233,254,.86);
 }

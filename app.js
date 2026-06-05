@@ -4,6 +4,7 @@ const tabs = document.querySelectorAll(".tabbar .tab");
 
 const state = {
   route: "home",
+  history: [],
   checkedIn: false,
   checkinCelebrating: false,
   checkinMonthOffset: 0,
@@ -49,15 +50,41 @@ function showToast(message) {
 }
 
 function go(route, params = {}) {
+  if (state.route !== route) {
+    state.history.push({ route: state.route, params: state.params || {} });
+  }
   state.route = route;
   state.params = params;
+  render();
+}
+
+function goBack() {
+  const last = state.history.pop();
+  if (last) {
+    state.route = last.route;
+    state.params = last.params || {};
+  } else {
+    state.route = "home";
+    state.params = {};
+  }
+  render();
+}
+
+function switchTab(route) {
+  state.history = [];
+  state.route = route;
+  state.params = {};
   render();
 }
 
 function nav(title, right = "") {
   const rootTabs = ["home", "reports", "ledger", "profile"];
   if (rootTabs.includes(state.route)) return "";
-  return `<div class="nav nav-quiet"><button onclick="go('home')" aria-label="返回首页">‹</button><span></span>${right || "<span></span>"}</div>`;
+  return `<div class="nav nav-quiet" aria-label="${title}">
+    <button class="back-button" onclick="goBack()" aria-label="返回上一级">‹</button>
+    <span></span>
+    ${right || "<span></span>"}
+  </div>`;
 }
 
 function section(title, action, route) {
@@ -427,8 +454,9 @@ function render() {
   }
 }
 
-tabs.forEach(tab => tab.addEventListener("click", () => go(tab.dataset.route)));
+tabs.forEach(tab => tab.addEventListener("click", () => switchTab(tab.dataset.route)));
 window.go = go;
+window.goBack = goBack;
 window.toggleAgreement = toggleAgreement;
 window.handleCheckinClick = handleCheckinClick;
 window.showToast = showToast;

@@ -96,19 +96,46 @@ button { border: 0; cursor: pointer; color: inherit; }
 }
 
 .nav {
-  height: 48px;
+  position: sticky;
+  top: 0;
+  z-index: 15;
+  height: 44px;
   display: grid;
   grid-template-columns: 44px 1fr 44px;
   align-items: center;
-  margin-bottom: 8px;
+  margin-bottom: -44px;
+  pointer-events: none;
 }
 .nav h1 { margin: 0; text-align: center; font-size: 18px; letter-spacing: 0; }
 .nav button {
-  height: 40px;
-  border-radius: 18px;
-  background: rgba(255,255,255,.38);
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(255,255,255,.62);
   backdrop-filter: var(--blur);
+  border: 1px solid rgba(255,255,255,.68);
+  box-shadow: 0 12px 26px rgba(88,64,150,.12);
   color: var(--ink);
+  pointer-events: auto;
+}
+.nav .back-button {
+  color: #6d28d9;
+  font-size: 30px;
+  line-height: 1;
+  padding-bottom: 3px;
+}
+.nav button:not(.back-button) {
+  width: auto;
+  min-width: 44px;
+  padding: 0 12px;
+  color: #6d28d9;
+  font-size: 12px;
+  font-weight: 900;
+}
+.nav + .glass {
+  padding-top: 58px !important;
 }
 
 .tabbar {
