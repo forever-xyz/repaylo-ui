@@ -636,6 +636,171 @@ button { border: 0; cursor: pointer; color: inherit; }
   font-size: 11px;
   font-weight: 900;
 }
+.message-center-page {
+  padding: 14px;
+  margin-bottom: 12px;
+  background:
+    radial-gradient(circle at 10% 0%, rgba(196,181,253,.28), transparent 34%),
+    linear-gradient(135deg, rgba(255,255,255,.78), rgba(255,255,255,.58));
+}
+.message-stats-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 7px;
+  margin-bottom: 12px;
+  padding-top: 26px;
+}
+.mark-read-btn {
+  position: absolute;
+  right: 0;
+  top: 0;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: 999px;
+  color: #6d28d9;
+  background: rgba(237,233,254,.78);
+  border: 1px solid rgba(196,181,253,.45);
+  font-size: 11px;
+  font-weight: 900;
+}
+.message-stat {
+  min-height: 74px;
+  padding: 8px 4px;
+  display: grid;
+  place-items: center;
+  border-radius: 20px;
+  background: rgba(255,255,255,.58);
+  border: 1px solid rgba(255,255,255,.48);
+}
+.message-stat span {
+  font-size: 16px;
+}
+.message-stat b {
+  margin-top: 2px;
+  color: #1f2937;
+  font-size: 18px;
+  line-height: 1;
+}
+.message-stat em {
+  color: var(--sub);
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 900;
+  white-space: nowrap;
+}
+.message-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 7px;
+  padding: 6px;
+  margin-bottom: 12px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.48);
+  border: 1px solid rgba(255,255,255,.44);
+}
+.message-tabs button {
+  height: 32px;
+  border-radius: 999px;
+  color: #64748b;
+  background: transparent;
+  font-size: 12px;
+  font-weight: 900;
+}
+.message-tabs button.active {
+  color: #fff;
+  background: linear-gradient(135deg, #c4b5fd, #8b5cf6);
+  box-shadow: 0 8px 18px rgba(139,92,246,.18);
+}
+.message-list {
+  display: grid;
+  gap: 12px;
+}
+.message-group h3 {
+  margin: 0 2px 8px;
+  color: #4b5563;
+  font-size: 13px;
+}
+.message-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  gap: 10px;
+  padding: 11px;
+  border-radius: 22px;
+  background: rgba(255,255,255,.58);
+  border: 1px solid rgba(255,255,255,.48);
+}
+.message-card.unread::after {
+  content: "";
+  position: absolute;
+  left: 9px;
+  top: 9px;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: #ef4444;
+}
+.message-card + .message-card {
+  margin-top: 8px;
+}
+.message-icon {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 16px;
+  font-size: 18px;
+  font-weight: 900;
+}
+.message-icon.contract {
+  background: rgba(237,233,254,.84);
+  color: #6d28d9;
+}
+.message-icon.growth {
+  background: rgba(220,252,231,.78);
+  color: #166534;
+}
+.message-icon.system {
+  background: rgba(238,246,255,.82);
+  color: #1d4ed8;
+}
+.message-content {
+  min-width: 0;
+}
+.message-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+.message-title-row strong {
+  min-width: 0;
+  color: #1f2937;
+  font-size: 14px;
+  line-height: 1.35;
+}
+.message-title-row time {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+.message-content p {
+  margin: 5px 0 8px;
+  color: var(--sub);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.message-content button {
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  color: #6d28d9;
+  background: rgba(237,233,254,.72);
+  font-size: 11px;
+  font-weight: 900;
+}
 .b-draft { background: linear-gradient(135deg, #edf2f7, #e2e8f0); color: #4a5568; }
 .b-progress { background: linear-gradient(135deg, #bee3f8, #90cdf4); color: #2b6cb0; }
 .b-pending { background: linear-gradient(135deg, #fef3c7, #fde68a); color: #b45309; }
@@ -724,15 +889,15 @@ button { border: 0; cursor: pointer; color: inherit; }
   display: inline-flex;
   align-items: center;
   border-radius: 999px;
-  border: 1px solid rgba(245,180,67,.38);
+  border: 1px solid rgba(245,180,67,.36);
   background:
-    linear-gradient(135deg, rgba(255,248,230,.92), rgba(254,243,199,.78) 48%, rgba(237,233,254,.62));
+    linear-gradient(135deg, rgba(255,248,230,.96), rgba(253,230,138,.58) 48%, rgba(245,180,67,.18));
   color: #8a5a05;
   font-size: 10px;
   font-weight: 900;
   font-variant-numeric: tabular-nums;
   letter-spacing: .1px;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.7), 0 6px 12px rgba(245,164,0,.08);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.66), 0 6px 12px rgba(245,164,0,.07);
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;

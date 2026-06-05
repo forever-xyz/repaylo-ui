@@ -10,6 +10,7 @@ const state = {
   checkinMonthOffset: 0,
   dateFilterOpen: false,
   agreementYear: 2026,
+  messageTab: "全部",
   score: 520,
   growth: 1280,
   expandedId: null,
@@ -443,21 +444,85 @@ function renderDelay() {
 }
 
 function renderMessages() {
+  const messages = getMessages();
+  const filtered = state.messageTab === "全部" ? messages : messages.filter(item => item.type === state.messageTab);
+  const groups = ["今天", "昨天", "更早"];
   return `
-    ${nav("消息", `<button onclick="showToast('已全部标为已读')">已读</button>`)}
-    <section class="glass form-card">
-      <h2 style="margin:0">12 条未读</h2>
-      <p style="color:var(--sub);font-size:13px">新的约定提醒会出现在这里</p>
-      ${message("约定提醒", "李* 的 ¥2,000 将在 3 天后到期", "b-progress")}
-      ${message("成长通知", "完成约定，信誉分 +5", "b-completed")}
-      ${message("系统通知", "凭证仅约定双方可见", "b-pending")}
+    ${nav("消息")}
+    <section class="glass message-center-page">
+      <div class="message-stats-card">
+        <button class="mark-read-btn" onclick="markAllMessagesRead()">全部已读</button>
+        ${messageStat("未读", "12", "✦")}
+        ${messageStat("约定提醒", countMessages(messages, "约定"), "📌")}
+        ${messageStat("成长通知", countMessages(messages, "成长"), "🌱")}
+        ${messageStat("系统通知", countMessages(messages, "系统"), "◌")}
+      </div>
+
+      <div class="message-tabs">
+        ${["全部", "约定", "成长", "系统"].map(tab => `<button class="${state.messageTab === tab ? "active" : ""}" onclick="setMessageTab('${tab}')">${tab}</button>`).join("")}
+      </div>
+
+      <div class="message-list">
+        ${groups.map(group => renderMessageGroup(group, filtered.filter(item => item.group === group))).join("")}
+      </div>
     </section>
-    ${statePanel()}
   `;
 }
 
-function message(title, sub, badge) {
-  return `<div class="message-item" onclick="go('detail')"><div class="icon-bubble">◌</div><div class="item-main"><strong>${title}</strong><span>${sub}</span></div><span class="badge ${badge}">未读</span></div>`;
+function getMessages() {
+  return [
+    { type: "约定", group: "今天", unread: true, icon: "📌", title: "小李同学的约定即将到期", time: "10:24", summary: "¥2,000 将在 3 天后到期，记得提前沟通。", action: "查看约定", route: "detail" },
+    { type: "成长", group: "今天", unread: true, icon: "🌱", title: "信誉分更新", time: "09:12", summary: "今日签到完成，信芽分 +10，连续记录保持中。", action: "查看成长记录", route: "credit" },
+    { type: "系统", group: "今天", unread: true, icon: "◌", title: "凭证隐私提醒", time: "08:40", summary: "上传凭证仅约定双方可见，请放心保存记录。", action: "查看详情", route: "messages" },
+    { type: "约定", group: "昨天", unread: true, icon: "📅", title: "延期申请已同步", time: "18:30", summary: "小陈同学申请延期至 7/10，等待你查看确认。", action: "查看约定", route: "detail" },
+    { type: "成长", group: "昨天", unread: false, icon: "⭐", title: "完成约定获得成长值", time: "14:06", summary: "你完成一笔聚餐垫付约定，信誉记录更稳定。", action: "查看成长记录", route: "credit" },
+    { type: "系统", group: "更早", unread: false, icon: "🔒", title: "数据安全说明", time: "6/02", summary: "还了么只记录约定与提醒，不提供资金、担保或催收服务。", action: "查看详情", route: "messages" },
+    { type: "约定", group: "更早", unread: false, icon: "📝", title: "草稿约定待完善", time: "5/30", summary: "你有一份备用记录还未发送，可以继续补充信息。", action: "查看约定", route: "agreements" }
+  ];
+}
+
+function countMessages(messages, type) {
+  return messages.filter(item => item.type === type).length;
+}
+
+function messageStat(label, value, icon) {
+  return `<div class="message-stat"><span>${icon}</span><b>${value}</b><em>${label}</em></div>`;
+}
+
+function renderMessageGroup(group, messages) {
+  if (!messages.length) return "";
+  return `
+    <section class="message-group">
+      <h3>${group}</h3>
+      ${messages.map(renderMessageItem).join("")}
+    </section>
+  `;
+}
+
+function renderMessageItem(item) {
+  return `
+    <article class="message-card ${item.unread ? "unread" : ""}">
+      <div class="message-icon ${messageTypeClass(item.type)}">${item.icon}</div>
+      <div class="message-content">
+        <div class="message-title-row"><strong>${item.title}</strong><time>${item.time}</time></div>
+        <p>${item.summary}</p>
+        <button onclick="go('${item.route}')">${item.action}</button>
+      </div>
+    </article>
+  `;
+}
+
+function messageTypeClass(type) {
+  return { "约定": "contract", "成长": "growth", "系统": "system" }[type] || "system";
+}
+
+function setMessageTab(tab) {
+  state.messageTab = tab;
+  render();
+}
+
+function markAllMessagesRead() {
+  showToast("已全部标为已读");
 }
 
 function renderReports() {
@@ -611,6 +676,8 @@ window.toggleDateFilter = toggleDateFilter;
 window.changeAgreementYear = changeAgreementYear;
 window.changeCheckinMonth = changeCheckinMonth;
 window.fillFieldOption = fillFieldOption;
+window.setMessageTab = setMessageTab;
+window.markAllMessagesRead = markAllMessagesRead;
 
 render();
 
