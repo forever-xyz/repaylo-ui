@@ -10,7 +10,13 @@ const state = {
   checkinMonthOffset: 0,
   dateFilterOpen: false,
   agreementYear: 2026,
+  homeStatus: "全部",
   messageTab: "全部",
+  reportYear: "全部数据",
+  reportLineMode: "lend",
+  reportOverviewOpen: false,
+  friendRankOpen: false,
+  friendRankOrder: "desc",
   score: 520,
   growth: 1280,
   expandedId: null,
@@ -34,6 +40,7 @@ const pages = {
   delay: renderDelay,
   messages: renderMessages,
   reports: renderReports,
+  friendRank: renderFriendRankPage,
   ledger: renderLedger,
   profile: renderProfile,
   checkin: renderCheckinCenter,
@@ -165,6 +172,9 @@ function renderHome() {
   const checkedClass = state.checkedIn ? "checked" : "";
   const celebrateClass = state.checkinCelebrating ? "celebrating" : "";
   const checkText = state.checkedIn ? "已签到" : "签到";
+  const homeAgreements = state.homeStatus === "全部"
+    ? agreements.slice(0, 3)
+    : agreements.filter(item => item.status === state.homeStatus).slice(0, 3);
   return `
     <section class="glass home-profile-card ${checkedClass} ${celebrateClass}">
       <span class="coin-particle"></span><span class="coin-particle"></span><span class="coin-particle"></span>
@@ -203,14 +213,14 @@ function renderHome() {
     <section class="glass home-agreements-panel">
       <div class="home-section-title">
         <div>
-          <h2>📋 我的约定 <span class="section-count-dot">3</span></h2>
+          <h2>📋 我的约定 <span class="section-count-dot">${homeAgreements.length}</span></h2>
         </div>
         <button onclick="go('agreements')">查看全部</button>
       </div>
       <div class="agreement-count-grid">
         ${statusMini("草稿", "2", "b-draft")}${statusMini("进行中", "8", "b-progress")}${statusMini("待确认", "4", "b-pending")}${statusMini("已完成", "12", "b-completed")}${statusMini("已逾期", "1", "b-overdue")}${statusMini("延期中", "1", "b-extended")}
       </div>
-      ${agreements.slice(0, 3).map(agreementCard).join("")}
+      ${homeAgreements.length ? homeAgreements.map(agreementCard).join("") : homeEmptyState()}
     </section>
   `;
 }
@@ -237,7 +247,23 @@ function mini(label, value) {
 }
 
 function statusMini(label, value, badge) {
-  return `<div class="mini status-mini ${badge}"><span class="mini-icon">${statusIcon(label)}</span><b>${value}</b><span>${label}</span></div>`;
+  const active = state.homeStatus === label ? "active" : "";
+  return `<button class="mini status-mini ${badge} ${active}" onclick="setHomeStatus('${label}')"><span class="mini-icon">${statusIcon(label)}</span><b>${value}</b><span>${label}</span></button>`;
+}
+
+function setHomeStatus(status) {
+  state.homeStatus = state.homeStatus === status ? "全部" : status;
+  state.expandedId = null;
+  render();
+}
+
+function homeEmptyState() {
+  return `
+    <div class="home-agreement-empty">
+      <strong>暂无${state.homeStatus}约定</strong>
+      <span>换个状态看看，或进入全部约定</span>
+    </div>
+  `;
 }
 
 function reminder(title, sub, badgeClass, badgeText) {
@@ -525,15 +551,224 @@ function markAllMessagesRead() {
   showToast("已全部标为已读");
 }
 
+function getFriendRanks() {
+  return [
+    [1, "李", "小李同学", "12", "100%", "¥28,600", "gold"],
+    [2, "周", "阿周同学", "9", "98%", "¥18,200", "silver"],
+    [3, "陈", "小陈同学", "7", "96%", "¥12,800", "bronze"],
+    [4, "钱", "小钱同学", "6", "95%", "¥8,600", "normal"],
+    [5, "林", "林同学", "5", "93%", "¥6,200", "normal"],
+    [6, "王", "小王同学", "5", "92%", "¥5,900", "normal"],
+    [7, "赵", "赵同学", "4", "90%", "¥4,800", "normal"],
+    [8, "许", "许同学", "4", "88%", "¥4,200", "normal"],
+    [9, "沈", "沈同学", "3", "86%", "¥3,600", "normal"],
+    [10, "何", "何同学", "3", "85%", "¥2,900", "normal"]
+  ];
+}
+
 function renderReports() {
+  const yearOptions = [2024, 2025, 2026];
+  const visibleFriends = getFriendRanks().slice(0, 3);
   return `
     ${nav("报表")}
-    <section class="glass hero-card" style="min-height:auto;padding:18px">
-      <h2 style="margin:0 0 6px">本月温暖总览</h2>
-      <p style="margin:0;color:var(--sub);font-size:13px">借出 ¥8,600 · 借入 ¥3,200 · 守约率 96%</p>
+    <section class="reports-page">
+      <section class="glass report-overview ${state.reportOverviewOpen ? "expanded" : ""}" onclick="toggleReportOverview()">
+        <div class="report-section-head">
+          <div>
+            <h2>借条总览</h2>
+            <span>年度数据</span>
+          </div>
+          <span class="year-current" aria-hidden="true"><i></i></span>
+        </div>
+        <div class="report-year-filter" onclick="event.stopPropagation()">
+          <button class="year-all ${state.reportYear === "全部数据" ? "active" : ""}" onclick="setReportYear('全部数据')">全部</button>
+          <span class="year-divider"></span>
+          <div class="report-year-scroll">
+          ${yearOptions.map(option => {
+            const active = state.reportYear === option ? "active" : "";
+            return `<button class="${active}" onclick="setReportYear('${option}')">${option}</button>`;
+          }).join("")}
+          </div>
+        </div>
+        <div class="report-money-row">
+          <div class="report-money-card lend"><span>借出金额</span><strong>¥86,000</strong></div>
+          <div class="report-money-card borrow"><span>借入金额</span><strong>¥12,000</strong></div>
+        </div>
+        <div class="report-overview-grid">
+          ${reportMetric("↔", "总流转金额", "¥98,000")}
+          ${reportMetric("✓", "守约率", "96%")}
+          ${reportMetric("★", "已完成约定", "42")}
+          ${reportMetric("⌛", "待完成约定", "9")}
+          ${reportMetric("!", "逾期次数", "1")}
+          ${reportMetric("👥", "好友数量", "28")}
+        </div>
+      </section>
+
+      <section class="glass friend-rank-card">
+        <div class="report-section-head compact">
+          <h2>好友梯度榜</h2>
+          <button onclick="go('friendRank')">查看全部 ></button>
+        </div>
+        <div class="friend-rank-list">
+          ${visibleFriends.map(item => friendRank(...item)).join("")}
+        </div>
+      </section>
+
+      <section class="glass report-chart-card">
+        <div class="report-chart-switch">
+          <button class="lend-mode ${state.reportLineMode !== "borrow" ? "active" : ""}" onclick="setReportLineMode('lend')">借出</button>
+          <button class="borrow-mode ${state.reportLineMode === "borrow" ? "active" : ""}" onclick="setReportLineMode('borrow')">借入</button>
+        </div>
+        ${lineChart(state.reportLineMode === "borrow" ? "borrow" : "lend")}
+      </section>
+
+      <section class="glass report-donut-card">
+        <div class="donut-visual">
+          <div class="donut-ring"></div>
+          <div class="donut-core"><span>总金额</span><strong>¥98,000</strong></div>
+        </div>
+        <div class="donut-legend">
+          ${donutLegend("借出", "86k", "#8b5cf6")}
+          ${donutLegend("借入", "12k", "#f87171")}
+          ${donutLegend("已完成", "42", "#22c55e")}
+          ${donutLegend("待完成", "9", "#facc15")}
+          ${donutLegend("逾期", "1", "#ef4444")}
+        </div>
+      </section>
+
+      <section class="glass report-bar-card">
+        <div class="bar-chart">
+          ${barItem("出手相助", 28, 28, "violet")}
+          ${barItem("江湖救急", 10, 28, "pink")}
+          ${barItem("已完成", 24, 28, "green")}
+          ${barItem("待完成", 5, 28, "yellow")}
+          ${barItem("逾期", 1, 28, "red")}
+        </div>
+      </section>
     </section>
-    <section class="glass data-grid" style="margin-top:14px">${dataCard("借出金额","¥8,600")}${dataCard("借入金额","¥3,200")}${dataCard("守约率","96%")}${dataCard("成长值","+128")}</section>
   `;
+}
+
+function reportMetric(icon, label, value) {
+  return `<div class="report-metric"><i class="metric-icon">${icon}</i><em>${label}</em><strong>${value}</strong></div>`;
+}
+
+function friendRank(rank, avatar, name, times, rate, amount, tone) {
+  return `
+    <div class="friend-rank-row ${tone}">
+      <span class="rank-medal">${rank}</span>
+      <span class="rank-avatar">${avatar}</span>
+      <div class="rank-info"><strong>${name}</strong><span>${times} 次 · 守约率 ${rate}</span></div>
+      <b>${amount}</b>
+    </div>
+  `;
+}
+
+function lineChart(mode) {
+  const lend = [18, 28, 34, 30, 42, 50, 56, 68, 74, 82, 90, 96];
+  const borrow = [16, 22, 18, 28, 25, 34, 30, 42, 38, 48, 44, 54];
+  const data = mode === "borrow" ? borrow : lend;
+  const points = data.map((value, index) => `${index * 28},${120 - value}`).join(" ");
+  const labels = data.map((value, index) => {
+    const x = Math.max(16, Math.min(292, index * 28));
+    const y = Math.max(14, 110 - value);
+    return `<text x="${x}" y="${y}" class="chart-amount-label">${formatChartAmount(value)}</text>`;
+  }).join("");
+  return `
+    <div class="line-chart ${mode}">
+      <div class="line-grid"></div>
+      <svg viewBox="0 0 308 132" preserveAspectRatio="none" aria-hidden="true">
+        <defs>
+          <linearGradient id="lineGradient-${mode}" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stop-color="${mode === "borrow" ? "#fecaca" : "#c4b5fd"}"></stop>
+            <stop offset="100%" stop-color="${mode === "borrow" ? "#f87171" : "#8b5cf6"}"></stop>
+          </linearGradient>
+          <linearGradient id="areaGradient-${mode}" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="${mode === "borrow" ? "#f87171" : "#8b5cf6"}" stop-opacity=".22"></stop>
+            <stop offset="100%" stop-color="#ffffff" stop-opacity="0"></stop>
+          </linearGradient>
+        </defs>
+        <polygon points="0,132 ${points} 308,132" fill="url(#areaGradient-${mode})"></polygon>
+        <polyline points="${points}" fill="none" stroke="url(#lineGradient-${mode})" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"></polyline>
+        ${data.map((value, index) => `<circle cx="${index * 28}" cy="${120 - value}" r="4" class="node"></circle>`).join("")}
+        ${labels}
+      </svg>
+    </div>
+  `;
+}
+
+function formatChartAmount(value) {
+  return `${(value / 10).toFixed(2)}万`;
+}
+
+function donutLegend(label, value, color) {
+  return `<div class="donut-legend-row"><i style="background:${color}"></i><span>${label}</span><b>${value}</b></div>`;
+}
+
+function barItem(label, value, max, tone) {
+  const width = Math.max(8, Math.round((value / max) * 100));
+  return `<div class="bar-item ${tone}"><span>${label}</span><div class="bar-track"><i style="width:${width}%"></i></div><b>${value}</b></div>`;
+}
+
+function setReportYear(year) {
+  const parsed = Number(year);
+  state.reportYear = Number.isNaN(parsed) ? year : parsed;
+  render();
+}
+
+function toggleReportOverview() {
+  state.reportOverviewOpen = !state.reportOverviewOpen;
+  render();
+}
+
+function toggleFriendRank(event) {
+  if (event) event.stopPropagation();
+  go("friendRank");
+}
+
+function setReportLineMode(mode) {
+  state.reportLineMode = mode;
+  render();
+}
+
+function renderFriendRankPage() {
+  const yearText = state.reportYear === "全部数据" ? "全部" : `${state.reportYear}年`;
+  const sortedRanks = state.friendRankOrder === "asc"
+    ? [...getFriendRanks()].reverse()
+    : getFriendRanks();
+  return `
+    ${nav("好友排行")}
+    <section class="reports-page friend-rank-page">
+      <section class="glass rank-summary-card">
+        <div class="rank-summary-head">
+          <div class="rank-summary-title">
+            <span>🏅</span>
+            <strong>好友梯度榜</strong>
+          </div>
+          <span class="rank-year-badge">${yearText}</span>
+        </div>
+        <div class="rank-summary-grid">
+          ${reportMetric("👥", "上榜好友", "10")}
+          ${reportMetric("✓", "平均守约率", "92%")}
+          ${reportMetric("↔", "累计金额", "¥86k")}
+        </div>
+      </section>
+      <section class="glass friend-rank-card full">
+        <div class="report-section-head compact">
+          <h2>英雄榜</h2>
+          <button onclick="toggleFriendRankOrder()">${state.friendRankOrder === "desc" ? "正序排序" : "倒序排序"}</button>
+        </div>
+        <div class="friend-rank-list all">
+          ${sortedRanks.map(item => friendRank(...item)).join("")}
+        </div>
+      </section>
+    </section>
+  `;
+}
+
+function toggleFriendRankOrder() {
+  state.friendRankOrder = state.friendRankOrder === "desc" ? "asc" : "desc";
+  render();
 }
 
 function renderLedger() {
@@ -672,12 +907,18 @@ window.toggleAgreement = toggleAgreement;
 window.handleCheckinClick = handleCheckinClick;
 window.showToast = showToast;
 window.setFilter = setFilter;
+window.setHomeStatus = setHomeStatus;
 window.toggleDateFilter = toggleDateFilter;
 window.changeAgreementYear = changeAgreementYear;
 window.changeCheckinMonth = changeCheckinMonth;
 window.fillFieldOption = fillFieldOption;
 window.setMessageTab = setMessageTab;
 window.markAllMessagesRead = markAllMessagesRead;
+window.setReportYear = setReportYear;
+window.toggleReportOverview = toggleReportOverview;
+window.setReportLineMode = setReportLineMode;
+window.toggleFriendRank = toggleFriendRank;
+window.toggleFriendRankOrder = toggleFriendRankOrder;
 
 render();
 

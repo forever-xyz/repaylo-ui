@@ -1,0 +1,80 @@
+<view class="report-page">
+  <view class="page-glow glow-a"></view>
+  <view class="page-glow glow-b"></view>
+
+  <view class="overview-card glass-card" bindtap="toggleOverview">
+    <view class="section-head">
+      <view>
+        <view class="section-title">借条总览</view>
+        <view class="section-sub">年度数据</view>
+      </view>
+      <picker mode="selector" range="{{years}}" value="{{yearIndex}}" bindchange="onYearChange" catchtap="noop">
+        <view class="year-pill">{{currentYear}} 年</view>
+      </picker>
+    </view>
+
+    <view class="money-row">
+      <view class="money-panel lend">
+        <text>借出金额</text>
+        <view>¥{{overview.lendAmount}}</view>
+      </view>
+      <view class="money-panel borrow">
+        <text>借入金额</text>
+        <view>¥{{overview.borrowAmount}}</view>
+      </view>
+    </view>
+
+    <view wx:if="{{overviewExpanded}}" class="overview-grid">
+      <view wx:for="{{overviewMetrics}}" wx:key="label" class="overview-metric">
+        <text>{{item.label}}</text>
+        <view>{{item.value}}</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="friend-card glass-card">
+    <view class="section-head compact">
+      <view class="section-title">好友梯度榜</view>
+      <view class="more-link">查看全部 ></view>
+    </view>
+
+    <view class="friend-list">
+      <view wx:for="{{friends}}" wx:key="rank" class="friend-row rank-{{item.rank}}">
+        <view class="medal">{{item.medal}}</view>
+        <view class="friend-avatar">{{item.avatar}}</view>
+        <view class="friend-info">
+          <view class="friend-name">{{item.name}}</view>
+          <text>{{item.times}} 次 · 守约率 {{item.rate}}</text>
+        </view>
+        <view class="friend-amount">¥{{item.amount}}</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="chart-card glass-card">
+    <view class="chart-switch">
+      <view class="{{lineMode === 'lend' ? 'active' : ''}}" data-mode="lend" bindtap="switchLineMode">借出折线图</view>
+      <view class="{{lineMode === 'borrow' ? 'active' : ''}}" data-mode="borrow" bindtap="switchLineMode">借入折线图</view>
+    </view>
+    <canvas canvas-id="lineChart" class="line-canvas"></canvas>
+  </view>
+
+  <view class="chart-card glass-card donut-card">
+    <canvas canvas-id="donutChart" class="donut-canvas"></canvas>
+    <view class="donut-center">
+      <text>总金额</text>
+      <view>¥{{overview.totalAmount}}</view>
+    </view>
+    <view class="legend-list">
+      <view wx:for="{{distribution}}" wx:key="name" class="legend-row">
+        <text style="background: {{item.color}}"></text>
+        <view>{{item.name}}</view>
+        <strong>{{item.value}}</strong>
+      </view>
+    </view>
+  </view>
+
+  <view class="chart-card glass-card">
+    <canvas canvas-id="barChart" class="bar-canvas"></canvas>
+  </view>
+</view>
