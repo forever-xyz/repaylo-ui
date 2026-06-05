@@ -85,7 +85,7 @@ button { border: 0; cursor: pointer; color: inherit; }
   z-index: 2;
   height: calc(100% - 96px);
   overflow-y: auto;
-  padding: 0 16px 88px;
+  padding: 0 16px 44px;
   scroll-behavior: smooth;
 }
 .app::-webkit-scrollbar { width: 0; }
@@ -1015,12 +1015,14 @@ button { border: 0; cursor: pointer; color: inherit; }
   margin-top: 0;
   overflow: hidden;
   opacity: 0;
-  transition: max-height .26s ease, opacity .22s ease, margin .22s ease;
+  transform: translateY(-6px);
+  transition: max-height .68s cubic-bezier(.22,1,.36,1), opacity .48s ease, margin .46s ease, transform .58s cubic-bezier(.22,1,.36,1);
 }
 .report-overview.expanded .report-overview-grid {
   max-height: 172px;
   margin-top: 12px;
   opacity: 1;
+  transform: translateY(0);
 }
 .report-metric {
   min-height: 68px;
@@ -1427,7 +1429,7 @@ button { border: 0; cursor: pointer; color: inherit; }
   backdrop-filter: blur(20px);
   border: 1px solid rgba(255,255,255,.62);
   box-shadow: 0 5px 18px rgba(99,102,241,.07);
-  transition: transform .24s cubic-bezier(.2,0,0,1), background .24s ease, box-shadow .24s ease, border-color .24s ease;
+  transition: transform .42s cubic-bezier(.22,1,.36,1), background .44s ease, box-shadow .44s ease, border-color .44s ease;
 }
 .agreement-card + .agreement-card { margin-top: 9px; }
 .agreement-card:active { transform: scale(.988); }
@@ -1546,16 +1548,24 @@ button { border: 0; cursor: pointer; color: inherit; }
   max-height: 0;
   overflow: hidden;
   opacity: 0;
-  transform: translateY(-4px);
-  transition: max-height .28s cubic-bezier(.2,0,0,1), opacity .22s ease, transform .22s ease, margin .22s ease;
+  padding: 0 12px;
+  border-radius: 18px;
+  transform: translateY(-8px) scale(.985);
+  transition:
+    max-height .72s cubic-bezier(.22,1,.36,1),
+    opacity .48s ease,
+    transform .64s cubic-bezier(.22,1,.36,1),
+    margin .54s ease,
+    padding .58s ease,
+    background .48s ease;
+  will-change: max-height, opacity, transform;
 }
 .agreement-card.expanded .agreement-extra {
-  max-height: 190px;
+  max-height: 240px;
   opacity: 1;
   transform: none;
   margin-top: 12px;
-  padding: 10px 12px;
-  border-radius: 18px;
+  padding: 11px 12px;
   background:
     radial-gradient(circle at 0% 0%, rgba(221,214,254,.32), transparent 36%),
     rgba(255,255,255,.54);
@@ -1568,6 +1578,19 @@ button { border: 0; cursor: pointer; color: inherit; }
   color: var(--sub);
   font-size: 12px;
   line-height: 1.5;
+  opacity: 0;
+  transform: translateY(-3px);
+  transition: opacity .42s ease, transform .52s cubic-bezier(.22,1,.36,1);
+}
+.agreement-card.expanded .agreement-extra p {
+  opacity: 1;
+  transform: translateY(0);
+}
+.agreement-card.expanded .agreement-extra p:nth-child(2) {
+  transition-delay: .08s;
+}
+.agreement-card.expanded .agreement-extra p:nth-child(3) {
+  transition-delay: .14s;
 }
 .agreement-extra b {
   color: #4b5563;

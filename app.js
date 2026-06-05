@@ -111,7 +111,7 @@ function agreementCard(item) {
   const action = actionMap[item.status] || "查看详情";
   const agreementNo = agreementNumber(item.id);
   return `
-    <article class="agreement-card ${expanded ? "expanded" : ""}" onclick="toggleAgreement(${item.id})">
+    <article class="agreement-card ${expanded ? "expanded" : ""}" data-agreement-id="${item.id}" onclick="toggleAgreement(${item.id})">
       <div class="agreement-card-header">
         <div class="agreement-user">
           <div class="card-avatar">${item.avatar}</div>
@@ -151,7 +151,15 @@ function statusIcon(status) {
 
 function toggleAgreement(id) {
   state.expandedId = state.expandedId === id ? null : id;
-  render();
+  const cards = document.querySelectorAll(".agreement-card");
+  if (!cards.length) {
+    render();
+    return;
+  }
+  cards.forEach(card => {
+    const isTarget = card.getAttribute("data-agreement-id") === String(id);
+    card.classList.toggle("expanded", isTarget && state.expandedId === id);
+  });
 }
 
 function statePanel() {
@@ -718,7 +726,12 @@ function setReportYear(year) {
 
 function toggleReportOverview() {
   state.reportOverviewOpen = !state.reportOverviewOpen;
-  render();
+  const overview = document.querySelector(".report-overview");
+  if (!overview) {
+    render();
+    return;
+  }
+  overview.classList.toggle("expanded", state.reportOverviewOpen);
 }
 
 function toggleFriendRank(event) {
