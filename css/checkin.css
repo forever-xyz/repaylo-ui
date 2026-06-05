@@ -137,12 +137,24 @@
 .calendar-toolbar button {
   width: 34px;
   height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 999px;
   color: #7c3aed;
   background: rgba(255,255,255,.7);
   font-size: 24px;
-  line-height: 1;
+  line-height: 34px;
+  padding: 0 0 2px;
   box-shadow: 0 8px 16px rgba(139,92,246,.12);
+}
+
+.calendar-toolbar button:first-child {
+  padding-right: 2px;
+}
+
+.calendar-toolbar button:last-child {
+  padding-left: 2px;
 }
 
 .calendar-toolbar strong {
