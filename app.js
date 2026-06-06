@@ -32,6 +32,7 @@ const state = {
   ledgerExpandedExpenseId: null,
   ledgerSwipedExpenseId: null,
   ledgerDeletedExpenseIds: [],
+  profileStatsOpen: false,
   score: 520,
   growth: 1280,
   expandedId: null,
@@ -60,6 +61,9 @@ const pages = {
   ledgerBudget: renderLedgerBudgetDetail,
   ledgerDistribution: renderLedgerDistributionDetail,
   profile: renderProfile,
+  vouchers: renderVouchers,
+  help: renderHelpCenter,
+  about: renderAbout,
   checkin: renderCheckinCenter,
   agreements: renderAgreementList,
   credit: renderCreditCenter
@@ -1437,24 +1441,218 @@ function toggleLedgerDistributionPicker() {
 
 function renderProfile() {
   return `
-    ${nav("我的")}
-    <section class="glass hero-card">
-      <div class="hero-top"><div class="avatar">明</div><div class="identity"><strong>小明</strong><p>信芽 ${state.score}分 · Lv2 热心市民</p></div></div>
-      <div class="metric-row" style="margin-top:14px">${metric("出借金额","¥8.6k")}${metric("完成次数","15")}${metric("守约率","96%")}</div>
+    <section class="profile-page">
+      <section class="glass profile-hero">
+        <div class="profile-portrait-card">
+          <div class="profile-avatar-wrap">
+            <div class="profile-avatar">😊</div>
+            <span class="profile-verified">✓</span>
+          </div>
+          <strong>小明同学</strong>
+          <p>愿每一次约定，都被温柔守护</p>
+          <div class="profile-mini-pills">
+            <em>🏆 热心市民</em>
+            <em>💎 ${state.score}分</em>
+            <em>🔥 连续 35 天</em>
+          </div>
+        </div>
+
+        <div class="profile-info-card ${state.profileStatsOpen ? "open" : ""}" onclick="toggleProfileStats()">
+          <div class="profile-info-summary">
+            ${profileStat("12", "出借", "violet")}
+            ${profileStat("6", "借款", "pink")}
+            ${profileStat("15", "完成", "green")}
+          </div>
+          <div class="profile-info-extra">
+            ${profileStat("9", "待完成", "yellow")}
+            ${profileStat("1", "逾期", "red")}
+            ${profileStat("2", "延期", "blue")}
+          </div>
+        </div>
+      </section>
+
+      <section class="profile-action-grid">
+        ${profileAction("📋", "我的约定", "28 条记录", "agreements", "violet")}
+        ${profileAction("📎", "我的凭证", "聊天/转账凭据", "vouchers", "blue")}
+        ${profileAction("🌱", "签到中心", "今日已签到", "checkin", "green")}
+        ${profileAction("🏆", "信誉中心", "成长与权益", "credit", "gold")}
+      </section>
+
+      <section class="glass profile-menu-card">
+        ${profileMenu("🔔", "消息中心", "12 条未读", "messages", true)}
+        ${profileMenu("❔", "帮助中心", "", "help", false)}
+        ${profileMenu("♡", "关于我们", "", "about", false)}
+      </section>
     </section>
-    <section class="glass form-card" style="margin-top:14px">
-      ${menu("我的凭证", "查看所有上传凭证")}
-      ${menu("消息中心", "12 条未读", "messages")}
-      ${menu("帮助中心", "常见问题与流程说明")}
-      ${menu("隐私设置", "控制数据可见范围")}
-      ${menu("关于我们", "版本与协议")}
-    </section>
-    ${statePanel()}
   `;
 }
 
 function menu(title, sub, route) {
   return `<div class="menu-item" onclick="${route ? `go('${route}')` : "showToast('扩展页面占位')" }"><div class="icon-bubble">›</div><div class="item-main"><strong>${title}</strong><span>${sub}</span></div></div>`;
+}
+
+function profileStat(value, label, tone) {
+  return `<div class="profile-stat ${tone}"><b>${value}</b><span>${label}</span></div>`;
+}
+
+function profileAction(icon, title, sub, route, tone) {
+  const action = route ? `go('${route}')` : "showToast('凭证中心原型待完善')";
+  return `
+    <button class="profile-action ${tone}" onclick="${action}">
+      <span>${icon}</span>
+      <strong>${title}</strong>
+      <em>${sub}</em>
+    </button>
+  `;
+}
+
+function profileDay(day, done) {
+  return `<span class="${done ? "done" : ""}"><b>${done ? "✓" : "·"}</b><em>${day}</em></span>`;
+}
+
+function profileLevel(icon, title, condition, active) {
+  return `<div class="profile-level-step ${active ? "active" : ""}"><span>${icon}</span><strong>${title}</strong><em>${condition}</em></div>`;
+}
+
+function toggleProfileStats() {
+  state.profileStatsOpen = !state.profileStatsOpen;
+  const card = document.querySelector(".profile-info-card");
+  if (!card) {
+    render();
+    return;
+  }
+  card.classList.toggle("open", state.profileStatsOpen);
+}
+
+function profileMenu(icon, title, sub, route, unread) {
+  const action = route ? `go('${route}')` : "showToast('扩展页面占位')";
+  return `
+    <button class="profile-menu-item" onclick="${action}">
+      <span class="profile-menu-icon">${icon}</span>
+      <div class="item-main"><strong>${title}</strong>${sub ? `<em class="${unread ? "is-unread" : ""}">${sub}</em>` : ""}</div>
+      <b>›</b>
+    </button>
+  `;
+}
+
+function renderVouchers() {
+  const vouchers = [
+    { icon: "💬", title: "项目周转聊天截图", owner: "小李同学", type: "聊天截图", amount: "¥2,000", count: "3张", time: "2026-06-04", tone: "violet" },
+    { icon: "🧾", title: "医疗急用转账截图", owner: "小王同学", type: "转账截图", amount: "¥1,000", count: "2张", time: "2026-06-02", tone: "pink" },
+    { icon: "📷", title: "聚餐垫付收据照片", owner: "小钱同学", type: "收据照片", amount: "¥268", count: "1张", time: "2026-05-28", tone: "green" },
+    { icon: "📎", title: "房租周转补充图片", owner: "阿周同学", type: "补充图片", amount: "¥1,800", count: "4张", time: "2026-05-19", tone: "blue" }
+  ];
+  return `
+    ${nav("我的凭证")}
+    <section class="vouchers-page">
+      <section class="glass vouchers-hero compact">
+        <div class="vouchers-hero-copy">
+          <span>凭证中心</span>
+          <h2>借条图片记录</h2>
+          <p>展示所有约定中保存过的聊天截图、转账截图和收据照片。</p>
+        </div>
+      </section>
+      <section class="voucher-stat-row">
+        ${voucherStat("28", "借条记录", "violet")}
+        ${voucherStat("42", "图片凭证", "green")}
+        ${voucherStat("6", "本月新增", "yellow")}
+      </section>
+      <section class="glass voucher-filter-card">
+        <button class="active">全部</button>
+        <button>聊天截图</button>
+        <button>转账截图</button>
+        <button>收据照片</button>
+      </section>
+      <section class="voucher-list">
+        ${vouchers.map(voucherListItem).join("")}
+      </section>
+    </section>
+  `;
+}
+
+function voucherStat(value, label, tone) {
+  return `<div class="voucher-stat ${tone}"><b>${value}</b><span>${label}</span></div>`;
+}
+
+function voucherListItem(item) {
+  return `
+    <article class="glass voucher-list-card ${item.tone}" onclick="showToast('已打开${item.title}详情')">
+      <div class="voucher-list-icon">${item.icon}</div>
+      <div class="voucher-list-main">
+        <strong>${item.title}</strong>
+        <span>${item.owner} · ${item.time}</span>
+      </div>
+      <div class="voucher-list-side">
+        <b>${item.amount}</b>
+        <em>${item.type} · ${item.count}</em>
+      </div>
+    </article>
+  `;
+}
+
+function renderHelpCenter() {
+  return `
+    ${nav("帮助中心")}
+    <section class="simple-page help-page">
+      <section class="glass simple-hero">
+        <span>还了么帮助中心</span>
+        <h2>遇到问题，先看这里</h2>
+        <p>围绕约定创建、确认、延期、凭证和信誉成长的常见问题。</p>
+      </section>
+      <section class="glass help-quick-card">
+        ${helpQuick("🤝", "出手相助", "给朋友创建一份清晰约定", "lend")}
+        ${helpQuick("🏃", "江湖救急", "坦诚发起一份求助约定", "emergency")}
+        ${helpQuick("📎", "凭证说明", "查看借条相关图片记录", "vouchers")}
+      </section>
+      <section class="glass help-list-card">
+        ${helpItem("如何创建一份约定？", "选择出手相助或江湖救急，填写对方、金额、归还日期和缘由后发送给对方确认。")}
+        ${helpItem("对方没有确认怎么办？", "可以在约定详情里查看状态，必要时通过温馨提醒让对方处理。")}
+        ${helpItem("延期申请怎么处理？", "借款方提交新归还日期和原因后，需等待对方确认，确认后约定日期会同步更新。")}
+        ${helpItem("凭证会被谁看到？", "凭证仅作为对应约定的辅助记录，原型中默认展示双方相关记录。")}
+        ${helpItem("信誉分怎么提升？", "完成约定、保持签到和及时处理延期，都能帮助信誉记录更稳定。")}
+      </section>
+    </section>
+  `;
+}
+
+function helpQuick(icon, title, desc, route) {
+  return `<button onclick="go('${route}')"><span>${icon}</span><strong>${title}</strong><em>${desc}</em></button>`;
+}
+
+function helpItem(title, desc) {
+  return `<article class="help-item"><strong>${title}</strong><p>${desc}</p></article>`;
+}
+
+function renderAbout() {
+  return `
+    ${nav("关于我们")}
+    <section class="simple-page about-page">
+      <section class="glass about-brand-card">
+        <div class="about-logo">还</div>
+        <h2>还了么</h2>
+        <p>一款帮助朋友之间把借还约定说清楚、记明白、好好完成的小程序原型。</p>
+      </section>
+      <section class="glass about-value-card">
+        ${aboutValue("🌿", "温和记录", "不催促、不压迫，把约定讲清楚。")}
+        ${aboutValue("🤝", "关系友好", "让借出与求助都更体面。")}
+        ${aboutValue("🛡️", "凭证辅助", "重要图片记录可在约定中查看。")}
+      </section>
+      <section class="glass about-menu-card">
+        ${aboutRow("当前版本", "MVP 原型 V1.0")}
+        ${aboutRow("设计基准", "微信小程序 · 375px")}
+        ${aboutRow("服务协议", "原型占位")}
+        ${aboutRow("隐私说明", "原型占位")}
+      </section>
+    </section>
+  `;
+}
+
+function aboutValue(icon, title, desc) {
+  return `<article><span>${icon}</span><div><strong>${title}</strong><p>${desc}</p></div></article>`;
+}
+
+function aboutRow(label, value) {
+  return `<div class="about-row"><span>${label}</span><b>${value}</b></div>`;
 }
 
 function renderCheckinCenter() {
@@ -1528,16 +1726,68 @@ function changeAgreementYear(delta) {
 function renderCreditCenter() {
   return `
     ${nav("信誉中心")}
-    <section class="glass hero-card">
-      <h2 style="font-size:34px;margin:0">${state.score}</h2>
-      <p style="color:var(--sub)">诚信伙伴 · 守约率 96%</p>
-      <div class="progress-track"><div class="progress-fill" style="--p:88%"></div></div>
-      <div class="metric-row">${metric("完成约定","15")}${metric("逾期处理","1")}${metric("成长值",state.growth)}</div>
+    <section class="credit-center-page">
+      <section class="glass credit-center-hero">
+        <div class="credit-ring">
+          <span>${state.score}</span>
+          <em>信芽分</em>
+        </div>
+        <div class="credit-hero-copy">
+          <strong>热心市民</strong>
+          <p>社区小暖阳，守约率 96%</p>
+          <div class="credit-hero-tags">
+            <span>连续签到 35 天</span>
+            <span>完成 15 笔</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="glass credit-progress-card">
+        <div class="profile-section-head">
+          <div>
+            <h2>等级进度</h2>
+          </div>
+        </div>
+        <div class="credit-progress-line">
+          <div class="row-between"><span>当前成长</span><b>75%</b></div>
+          <div class="progress-track"><i style="width:75%"></i></div>
+        </div>
+        <div class="credit-mystery-row">
+          <span class="active">当前</span>
+          <span>?</span>
+          <span>?</span>
+          <span>?</span>
+          <span>?</span>
+          <span>?</span>
+        </div>
+      </section>
+
+      <section class="glass credit-timeline-card">
+        <div class="profile-section-head">
+          <div>
+            <h2>信誉动态</h2>
+          </div>
+        </div>
+        <div class="credit-event-list">
+          ${creditEvent("+10", "今日签到完成", "信芽分增加，连续记录保持中", "green")}
+          ${creditEvent("+5", "完成与小李同学的约定", "对方已确认完成，守约记录更新", "violet")}
+          ${creditEvent("-1", "逾期后已处理", "记录保留，状态进入修复中", "red")}
+        </div>
+      </section>
     </section>
-    <section class="glass data-grid" style="margin-top:14px">${dataCard("本月借出","¥8,600")}${dataCard("本月借入","¥3,200")}${dataCard("信誉变化","+12")}${dataCard("好友互动","9次")}</section>
-    <section class="glass timeline" style="margin-top:14px">${timeline("+5","完成与李*的约定","信誉分增加")}${timeline("-1","逾期后已处理","信誉修复中")}${timeline("+3","收到好友确认","关系记录更清晰")}</section>
-    ${statePanel()}
   `;
+}
+
+function creditLevelChip(item, active) {
+  return `<div class="credit-level-chip ${active ? "active" : ""}"><span>${item[0]}</span><strong>${item[1]}</strong><em>${item[2]}</em><small>${item[3]}</small></div>`;
+}
+
+function creditMetric(value, label, tone) {
+  return `<div class="glass credit-metric ${tone}"><b>${value}</b><span>${label}</span></div>`;
+}
+
+function creditEvent(score, title, desc, tone) {
+  return `<div class="credit-event ${tone}"><b>${score}</b><div><strong>${title}</strong><p>${desc}</p></div></div>`;
 }
 
 function render() {
@@ -1561,6 +1811,7 @@ tabs.forEach(tab => tab.addEventListener("click", () => switchTab(tab.dataset.ro
 window.go = go;
 window.goBack = goBack;
 window.toggleAgreement = toggleAgreement;
+window.toggleProfileStats = toggleProfileStats;
 window.handleCheckinClick = handleCheckinClick;
 window.showToast = showToast;
 window.setFilter = setFilter;
