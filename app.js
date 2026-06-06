@@ -1,6 +1,8 @@
 ﻿const app = document.querySelector("#app");
 const toast = document.querySelector("#toast");
 const tabs = document.querySelectorAll(".tabbar .tab");
+const ledgerFab = document.querySelector("#ledgerFab");
+const ledgerSheet = document.querySelector("#ledgerSheet");
 
 const state = {
   route: "home",
@@ -17,6 +19,19 @@ const state = {
   reportOverviewOpen: false,
   friendRankOpen: false,
   friendRankOrder: "desc",
+  ledgerDateOffset: 0,
+  ledgerBudgetOpen: false,
+  ledgerDistributionOpen: false,
+  ledgerDatePickerOpen: false,
+  ledgerMonthPickerOpen: false,
+  ledgerDistributionMode: "day",
+  ledgerDistributionPickerOpen: false,
+  ledgerAddSheetOpen: false,
+  ledgerAddType: "expense",
+  ledgerAddCategory: "other",
+  ledgerExpandedExpenseId: null,
+  ledgerSwipedExpenseId: null,
+  ledgerDeletedExpenseIds: [],
   score: 520,
   growth: 1280,
   expandedId: null,
@@ -42,6 +57,8 @@ const pages = {
   reports: renderReports,
   friendRank: renderFriendRankPage,
   ledger: renderLedger,
+  ledgerBudget: renderLedgerBudgetDetail,
+  ledgerDistribution: renderLedgerDistributionDetail,
   profile: renderProfile,
   checkin: renderCheckinCenter,
   agreements: renderAgreementList,
@@ -785,16 +802,637 @@ function toggleFriendRankOrder() {
 }
 
 function renderLedger() {
+  const dateInfo = ledgerDateInfo(state.ledgerDateOffset);
+  const finance = ledgerFinanceSummary();
+  const expenses = ledgerExpenses().filter(item => !state.ledgerDeletedExpenseIds.includes(item.id));
+  const totalSpent = expenses.filter(item => item.kind !== "income").reduce((sum, item) => sum + item.amount, 0);
+  const totalIncome = expenses.filter(item => item.kind === "income").reduce((sum, item) => sum + item.amount, 0);
+  const todayPercent = Math.min(100, Math.round((totalSpent / finance.dailyBudget) * 100));
   return `
-    ${nav("账本")}
-    <section class="glass form-card">
-      <h2 style="margin:0 0 8px">今日账本</h2>
-      <p style="margin:0 0 14px;color:var(--sub);font-size:13px">记录日常垫付与人情往来，后续可与约定联动。</p>
-      ${activity("午", "午餐垫付", "¥128 · 12:30")}
-      ${activity("车", "打车代付", "¥46 · 18:10")}
-      ${activity("茶", "下午茶", "¥32 · 15:20")}
+    <section class="ledger-page">
+      <section class="ledger-date-card" aria-label="账本日期">
+        <button onclick="changeLedgerDate(-1)" aria-label="前一天">‹</button>
+        <div>
+          <strong>${dateInfo.full}</strong>
+          <span>▦ ${dateInfo.weekday}${dateInfo.isToday ? "<em>今天</em>" : ""}</span>
+        </div>
+        <button onclick="changeLedgerDate(1)" aria-label="后一天">›</button>
+      </section>
+
+      <section class="glass ledger-budget-card ${state.ledgerBudgetOpen ? "expanded" : ""}" onclick="toggleLedgerBudget()">
+        <div class="ledger-card-head">
+          <strong><span>¥</span> 收支</strong>
+          <button class="ledger-arrow-btn" onclick="event.stopPropagation(); go('ledgerBudget')" aria-label="查看预算设置">›</button>
+        </div>
+        <div class="ledger-budget-brief">
+          <div><span>已用 ¥${totalSpent} / ¥${finance.dailyBudget}</span><b>${todayPercent}%</b></div>
+          <div class="ledger-progress"><i style="width:${todayPercent}%"></i></div>
+          <p>今日剩余 ¥${Math.max(0, finance.dailyBudget - totalSpent)}</p>
+        </div>
+        <div class="ledger-budget-expand">
+          <div class="ledger-flow-grid">
+            ${ledgerFlowMetric("消费", `-¥${totalSpent}`, "expense")}
+            ${ledgerFlowMetric("预算", `¥${finance.dailyBudget}`, "budget")}
+            ${ledgerFlowMetric("收入", `+¥${totalIncome}`, "income")}
+          </div>
+          <div class="ledger-budget-detail">
+            <div class="ledger-ring" style="--p:${todayPercent * 3.6}deg"><b>${todayPercent}%</b><span>已用</span></div>
+            <div class="ledger-budget-lines">
+              ${ledgerBudgetLine("预算", `¥${finance.dailyBudget}`, "")}
+              ${ledgerBudgetLine("消费", `-¥${totalSpent}`, "spent")}
+              ${ledgerBudgetLine("剩余", `¥${Math.max(0, finance.dailyBudget - totalSpent)}`, "remain")}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="glass ledger-distribution-card ${state.ledgerDistributionOpen ? "expanded" : ""}" onclick="toggleLedgerDistribution()">
+        <div class="ledger-distribution-head">
+          <strong><span>◫</span> 消费分布</strong>
+          <button class="ledger-arrow-btn amber" onclick="event.stopPropagation(); go('ledgerDistribution')" aria-label="查看消费分布">›</button>
+        </div>
+        <div class="ledger-distribution-body">
+          ${ledgerDistributionItem("餐饮", 30, 60, "food")}
+          ${ledgerDistributionItem("超市", 18, 60, "shop")}
+          ${ledgerDistributionItem("通勤", 5, 60, "traffic")}
+        </div>
+      </section>
+
+      <section class="glass ledger-list-card">
+        <div class="ledger-list-head"><strong>▤ 收支</strong><b><span>-¥${totalSpent}</span><em>+¥${totalIncome}</em></b></div>
+        <div class="ledger-expense-list">
+          ${expenses.map(ledgerExpenseItem).join("")}
+        </div>
+      </section>
     </section>
   `;
+}
+
+function ledgerDateInfo(offset) {
+  const date = new Date(2026, 5, 6);
+  date.setDate(date.getDate() + offset);
+  const weekdays = ["星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"];
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return {
+    full: `${year}年${month}月${day}日`,
+    short: `${month}/${day}`,
+    day,
+    weekday: weekdays[date.getDay()],
+    isToday: offset === 0
+  };
+}
+
+function ledgerBudgetData() {
+  return {
+    today: { total: 200, spent: 60 },
+    week: { total: 1400, spent: 420 },
+    month: { total: 6000, spent: 1680 }
+  };
+}
+
+function ledgerFinanceSummary() {
+  const monthBudget = 6000;
+  return {
+    monthBudget,
+    dailyBudget: Math.round(monthBudget / 30),
+    monthSpent: 1680,
+    monthIncome: 8200
+  };
+}
+
+function ledgerFlowMetric(label, value, tone) {
+  return `<div class="ledger-flow-metric ${tone}"><span>${label}</span><strong>${value}</strong></div>`;
+}
+
+function ledgerBudgetLine(label, value, tone) {
+  return `<div class="ledger-budget-line ${tone}"><span>${label}</span><b>${value}</b></div>`;
+}
+
+function ledgerDistributionItem(label, value, max, tone) {
+  const width = Math.max(9, Math.round((value / max) * 100));
+  return `<div class="ledger-dist-item ${tone}"><span>${label}</span><div><i style="width:${width}%"></i></div><b>¥${value}</b></div>`;
+}
+
+function ledgerExpenses() {
+  return [
+    { id: 5, title: "兼职收入", time: "10:00", amount: 280, tone: "income", kind: "income", note: "周末设计稿尾款入账，记为收入。" },
+    { id: 1, title: "午餐", time: "12:30", amount: 30, tone: "food", note: "公司楼下简餐，今天偏清淡。" },
+    { id: 2, title: "超市", time: "18:40", amount: 18, tone: "shop", note: "买了牛奶和纸巾，属于日常补给。" },
+    { id: 3, title: "地铁", time: "08:15", amount: 5, tone: "traffic", note: "上班通勤，固定交通支出。" },
+    { id: 4, title: "咖啡", time: "15:20", amount: 7, tone: "coffee", note: "下午开会前买了一杯小杯咖啡。" }
+  ];
+}
+
+function ledgerExpenseItem(item) {
+  const { id, title, time, amount, tone, note, kind } = item;
+  const iconMap = { food: "餐", shop: "购", traffic: "行", coffee: "啡", income: "收" };
+  const expanded = state.ledgerExpandedExpenseId === id ? "expanded" : "";
+  const swiped = state.ledgerSwipedExpenseId === id ? "swiped" : "";
+  const isIncome = kind === "income";
+  return `
+    <article class="ledger-expense-item ${tone} ${isIncome ? "income" : ""} ${expanded} ${swiped}" data-ledger-expense-id="${id}" onclick="toggleLedgerExpense(${id})">
+      <div class="ledger-expense-main">
+        <span>${iconMap[tone] || "记"}</span>
+        <div><strong>${title}</strong><em>${time}</em></div>
+        <b>${isIncome ? "+" : "-"}¥${amount}</b>
+      </div>
+      <div class="ledger-expense-note" onclick="event.stopPropagation(); editLedgerNote(${id})"><span>${note}</span><button>修改</button></div>
+      <button class="ledger-delete-btn" onclick="event.stopPropagation(); deleteLedgerExpense(${id})">×</button>
+    </article>
+  `;
+}
+
+function changeLedgerDate(delta, absolute = false) {
+  state.ledgerDateOffset = absolute ? delta : state.ledgerDateOffset + delta;
+  state.ledgerDatePickerOpen = false;
+  render();
+}
+
+function toggleLedgerBudget() {
+  state.ledgerBudgetOpen = !state.ledgerBudgetOpen;
+  const card = document.querySelector(".ledger-budget-card");
+  if (!card) {
+    render();
+    return;
+  }
+  card.classList.toggle("expanded", state.ledgerBudgetOpen);
+  const label = card.querySelector(".ledger-card-head em");
+  if (label) label.textContent = "";
+}
+
+function toggleLedgerDistribution() {
+  state.ledgerDistributionOpen = !state.ledgerDistributionOpen;
+  const card = document.querySelector(".ledger-distribution-card");
+  if (!card) {
+    render();
+    return;
+  }
+  card.classList.toggle("expanded", state.ledgerDistributionOpen);
+  const label = card.querySelector(".ledger-distribution-head em");
+  if (label) label.textContent = "";
+}
+
+function toggleLedgerExpense(id) {
+  state.ledgerSwipedExpenseId = state.ledgerSwipedExpenseId === id ? null : state.ledgerSwipedExpenseId;
+  state.ledgerExpandedExpenseId = state.ledgerExpandedExpenseId === id ? null : id;
+  const items = document.querySelectorAll(".ledger-expense-item");
+  if (!items.length) {
+    render();
+    return;
+  }
+  items.forEach(item => {
+    const isTarget = item.getAttribute("data-ledger-expense-id") === String(id);
+    item.classList.toggle("expanded", isTarget && state.ledgerExpandedExpenseId === id);
+    if (isTarget) item.classList.remove("swiped");
+  });
+}
+
+function deleteLedgerExpense(id) {
+  state.ledgerDeletedExpenseIds.push(id);
+  state.ledgerExpandedExpenseId = null;
+  state.ledgerSwipedExpenseId = null;
+  showToast("已删除这笔消费");
+  render();
+}
+
+function editLedgerNote(id) {
+  showToast(`修改第 ${id} 笔备注`);
+}
+
+function addLedgerExpense() {
+  state.ledgerAddSheetOpen = true;
+  renderLedgerSheet();
+}
+
+function closeLedgerAddSheet() {
+  state.ledgerAddSheetOpen = false;
+  renderLedgerSheet();
+}
+
+function setLedgerAddType(type) {
+  state.ledgerAddType = type;
+  state.ledgerAddCategory = type === "income" ? "salary" : "other";
+  renderLedgerSheet(true);
+}
+
+function setLedgerAddCategory(category) {
+  state.ledgerAddCategory = category;
+  renderLedgerSheet(true);
+}
+
+function submitLedgerEntry() {
+  state.ledgerAddSheetOpen = false;
+  renderLedgerSheet();
+  showToast(state.ledgerAddType === "income" ? "收入已记录" : "支出已记录");
+}
+
+function renderLedgerSheet(quiet = false) {
+  if (!ledgerSheet) return;
+  ledgerSheet.innerHTML = state.ledgerAddSheetOpen ? ledgerAddSheetTemplate(quiet) : "";
+}
+
+function ledgerAddSheetTemplate(quiet = false) {
+  const isIncome = state.ledgerAddType === "income";
+  const categories = isIncome
+    ? [
+        ["salary", "💰", "工资"],
+        ["bonus", "🎁", "红包"],
+        ["parttime", "💼", "兼职"],
+        ["finance", "📈", "理财"],
+        ["reward", "🏆", "奖励"],
+        ["otherIncome", "💵", "其它收入"]
+      ]
+    : [
+        ["other", "✨", "其他"],
+        ["food", "🍱", "餐饮"],
+        ["traffic", "🚇", "交通"],
+        ["shop", "🛒", "购物"],
+        ["game", "🎮", "娱乐"],
+        ["study", "📚", "学习"],
+        ["medical", "🏥", "医疗"],
+        ["home", "🏠", "住房"],
+        ["gift", "🎁", "礼物"],
+        ["beauty", "💄", "美妆"],
+        ["pet", "🐱", "宠物"],
+        ["travel", "✈️", "旅行"]
+      ];
+  return `
+    <div class="ledger-sheet-mask ${quiet ? "no-animate" : ""}" onclick="closeLedgerAddSheet()"></div>
+    <section class="ledger-add-sheet ${quiet ? "no-animate" : ""}" role="dialog" aria-label="添加收支">
+      <div class="ledger-sheet-grabber"></div>
+      <div class="ledger-add-type-tabs">
+        <button class="${!isIncome ? "active expense" : ""}" onclick="setLedgerAddType('expense')">支出</button>
+        <button class="${isIncome ? "active income" : ""}" onclick="setLedgerAddType('income')">收入</button>
+      </div>
+      <div class="ledger-add-form">
+        <div class="ledger-category-line">
+          <span>分类</span>
+          <div class="ledger-category-row">
+          ${categories.map(([key, icon, label]) => `
+            <button class="${state.ledgerAddCategory === key ? "active" : ""}" onclick="setLedgerAddCategory('${key}')">
+              <i>${icon}</i><span>${label}</span>
+            </button>
+          `).join("")}
+            <button class="ledger-category-add" onclick="showToast('添加分类待接入')"><i>+</i><span>新增</span></button>
+          </div>
+        </div>
+        <label class="ledger-quick-field amount ${isIncome ? "income" : ""}">
+          <span>金额</span>
+          <input value="${isIncome ? "¥280" : "¥30"}" inputmode="decimal" aria-label="金额" />
+          <div>
+            <button>¥30</button><button>¥100</button><button>¥500</button>
+          </div>
+        </label>
+        <label class="ledger-quick-field note">
+          <span>备注</span>
+          <input placeholder="写点什么..." value="${isIncome ? "兼职" : "午餐"}" aria-label="备注" />
+        </label>
+      </div>
+      <div class="ledger-add-action-row">
+        <span class="ledger-added-count">3</span>
+        <button class="ledger-add-to-list" onclick="showToast('已加入待保存列表')" aria-label="加入待保存">+</button>
+      </div>
+      <div class="ledger-pending-list">
+        ${ledgerPendingItem("🍱", "午餐", "支出 · 餐饮", "-¥30", "expense")}
+        ${ledgerPendingItem("🛒", "超市", "支出 · 购物", "-¥18", "expense")}
+        ${ledgerPendingItem("💰", "兼职", "收入 · 其他", "+¥280", "income")}
+      </div>
+      <div class="ledger-sheet-actions">
+        <button onclick="closeLedgerAddSheet()">取消</button>
+        <button class="save" onclick="submitLedgerEntry()">保存</button>
+      </div>
+    </section>
+  `;
+}
+
+function ledgerPendingItem(icon, title, meta, amount, tone) {
+  return `
+    <article class="ledger-pending-item ${tone}">
+      <i>${icon}</i>
+      <div><strong>${title}</strong><span>${meta}</span></div>
+      <b>${amount}</b>
+      <button onclick="showToast('已删除这条待保存')">×</button>
+    </article>
+  `;
+}
+
+function bindLedgerSwipe() {
+  const target = document.querySelector(".ledger-date-card");
+  if (!target) return;
+  let startX = 0;
+  target.addEventListener("touchstart", event => {
+    startX = event.touches[0].clientX;
+  }, { passive: true });
+  target.addEventListener("touchend", event => {
+    const delta = event.changedTouches[0].clientX - startX;
+    if (Math.abs(delta) > 42) changeLedgerDate(delta > 0 ? -1 : 1);
+  }, { passive: true });
+  bindLedgerExpenseSwipe();
+}
+
+function bindLedgerExpenseSwipe() {
+  document.querySelectorAll(".ledger-expense-item").forEach(item => {
+    let startX = 0;
+    item.addEventListener("touchstart", event => {
+      startX = event.touches[0].clientX;
+    }, { passive: true });
+    item.addEventListener("touchend", event => {
+      const delta = event.changedTouches[0].clientX - startX;
+      const id = Number(item.getAttribute("data-ledger-expense-id"));
+      if (delta < -36) {
+        state.ledgerSwipedExpenseId = id;
+        state.ledgerExpandedExpenseId = null;
+        document.querySelectorAll(".ledger-expense-item").forEach(row => {
+          row.classList.toggle("swiped", row === item);
+          row.classList.remove("expanded");
+        });
+      } else if (delta > 36 && state.ledgerSwipedExpenseId === id) {
+        state.ledgerSwipedExpenseId = null;
+        item.classList.remove("swiped");
+      }
+    }, { passive: true });
+  });
+}
+
+function renderLedgerBudgetDetail() {
+  const finance = ledgerFinanceSummary();
+  const percent = Math.min(100, Math.round((finance.monthSpent / finance.monthBudget) * 100));
+  const remain = Math.max(0, finance.monthBudget - finance.monthSpent);
+  return `
+    ${nav("预算设置")}
+    <section class="ledger-page ledger-detail-page">
+      <section class="glass ledger-budget-editor redesigned month-only">
+        <div class="ledger-detail-head">
+          <strong>预算设置</strong>
+        </div>
+
+        <div class="ledger-month-form">
+          <button class="ledger-month-field main compact ${state.ledgerMonthPickerOpen ? "open" : ""}" onclick="toggleLedgerMonthPicker()" aria-label="选择月份">
+            <strong>2026年06月</strong>
+          </button>
+          <div class="ledger-month-picker ${state.ledgerMonthPickerOpen ? "show" : ""}">
+            <div class="ledger-month-picker-head">
+              <button>‹</button>
+              <strong>2026年</strong>
+              <button>›</button>
+            </div>
+            <div class="ledger-month-grid">
+              ${ledgerMonthOptions().map(ledgerMonthOption).join("")}
+            </div>
+          </div>
+          <div class="ledger-month-pair">
+            <div class="ledger-month-field">
+              <span>月预算</span>
+              <strong>¥${finance.monthBudget.toLocaleString("zh-CN")}</strong>
+            </div>
+            <div class="ledger-month-field soft">
+              <span>日均</span>
+              <strong>¥${finance.dailyBudget}</strong>
+            </div>
+          </div>
+        </div>
+
+        <div class="ledger-budget-detail">
+          <div class="ledger-ring" style="--p:${percent * 3.6}deg"><b>${percent}%</b><span>本月</span></div>
+          <div class="ledger-budget-lines">
+            ${ledgerBudgetLine("本月已花", `-¥${finance.monthSpent}`, "spent")}
+            ${ledgerBudgetLine("本月收入", `+¥${finance.monthIncome}`, "income")}
+            ${ledgerBudgetLine("预算剩余", `¥${remain}`, "remain")}
+          </div>
+        </div>
+
+        <div class="ledger-amount-presets">
+          <button class="custom" onclick="showToast('自定义金额输入待接入')">自定义金额</button>
+          ${[4500, 6000, 8000].map(value => `<button class="${value === finance.monthBudget ? "active" : ""}" onclick="showToast('已选择 ¥${value}')">¥${value}</button>`).join("")}
+        </div>
+
+        <button class="ledger-save-btn" onclick="showToast('预算已保存')">保存</button>
+      </section>
+
+      <section class="glass ledger-month-list-card">
+        <div class="ledger-list-head"><strong>月度收支</strong></div>
+        <div class="ledger-month-list">
+          ${ledgerMonthlyRows().map(ledgerMonthRow).join("")}
+        </div>
+      </section>
+    </section>
+  `;
+}
+
+function ledgerMonthlyRows() {
+  return [
+    { month: "2026年06月", budget: 6000, spent: 1680, income: 8200, active: true },
+    { month: "2026年05月", budget: 5200, spent: 4380, income: 7600 },
+    { month: "2026年04月", budget: 4800, spent: 3920, income: 7200 },
+    { month: "2026年03月", budget: 5000, spent: 4660, income: 6900 }
+  ];
+}
+
+function ledgerMonthOptions() {
+  return [
+    { month: 1, budget: 4800, spent: 5200, disabled: true },
+    { month: 2, budget: 5000, spent: 3980, disabled: true },
+    { month: 3, budget: 5000, spent: 4660, disabled: true },
+    { month: 4, budget: 4800, spent: 3920, disabled: true },
+    { month: 5, budget: 5200, spent: 4380, disabled: true },
+    { month: 6, budget: 6000, spent: 1680, active: true },
+    { month: 7, budget: 6000, spent: 0 },
+    { month: 8, budget: 6500, spent: 0 },
+    { month: 9 },
+    { month: 10 },
+    { month: 11 },
+    { month: 12 }
+  ];
+}
+
+function ledgerMonthOption(item) {
+  const over = typeof item.spent === "number" && typeof item.budget === "number" && item.spent > item.budget;
+  const hasBudget = typeof item.budget === "number";
+  const classes = [
+    item.active ? "active" : "",
+    item.disabled ? "disabled" : "",
+    hasBudget ? (over ? "over" : "ok") : ""
+  ].filter(Boolean).join(" ");
+  const amount = hasBudget ? `<small>¥${item.budget}</small>` : "";
+  const click = item.disabled ? "" : ` onclick="showToast('已选择 ${item.month}月')"`;
+  return `<button class="${classes}"${item.disabled ? " disabled" : click}><span>${item.month}月</span>${amount}</button>`;
+}
+
+function ledgerMonthRow(item) {
+  const remain = Math.max(0, item.budget - item.spent);
+  return `
+    <article class="ledger-month-row ${item.active ? "active" : ""}">
+      <div><strong>${item.month}</strong><span>${item.active ? "当前设置" : "历史记录"}</span></div>
+      <ul>
+        <li><span>预算</span><b>¥${item.budget}</b></li>
+        <li><span>消费</span><b class="spent">-¥${item.spent}</b></li>
+        <li><span>收入</span><b class="income">+¥${item.income}</b></li>
+        <li><span>剩余</span><b class="remain">¥${remain}</b></li>
+      </ul>
+    </article>
+  `;
+}
+
+function toggleLedgerMonthPicker() {
+  state.ledgerMonthPickerOpen = !state.ledgerMonthPickerOpen;
+  const field = document.querySelector(".ledger-month-field.main.compact");
+  const picker = document.querySelector(".ledger-month-picker");
+  if (!field || !picker) {
+    render();
+    return;
+  }
+  field.classList.toggle("open", state.ledgerMonthPickerOpen);
+  picker.classList.toggle("show", state.ledgerMonthPickerOpen);
+}
+
+function renderLedgerDistributionDetail() {
+  const isMonth = state.ledgerDistributionMode === "month";
+  return `
+    ${nav("消费分布")}
+    <section class="ledger-page ledger-detail-page">
+      <section class="glass ledger-distribution-filter">
+        <div class="ledger-distribution-selector-row">
+          <button class="ledger-month-field main compact distribution ${state.ledgerDistributionPickerOpen ? "open" : ""}" onclick="toggleLedgerDistributionPicker()" aria-label="选择统计周期">
+            <strong>${isMonth ? "2026年06月" : "2026年06月06日"}</strong>
+          </button>
+          <div class="ledger-mode-tabs">
+            <button class="${!isMonth ? "active" : ""}" onclick="setLedgerDistributionMode('day')">日</button>
+            <button class="${isMonth ? "active" : ""}" onclick="setLedgerDistributionMode('month')">月</button>
+          </div>
+        </div>
+        <div class="ledger-period-picker ${state.ledgerDistributionPickerOpen ? "show" : ""}">
+          <div class="ledger-month-picker-head">
+            <button>‹</button>
+            <strong>${isMonth ? "2026年" : "2026年06月"}</strong>
+            <button>›</button>
+          </div>
+          <div class="${isMonth ? "ledger-month-grid" : "ledger-day-grid"}">
+            ${isMonth ? ledgerMonthOptions().map(ledgerDistributionMonthOption).join("") : `${ledgerWeekHeader()}${ledgerDayOptions().map(ledgerDistributionDayOption).join("")}`}
+          </div>
+        </div>
+      </section>
+
+      <section class="glass ledger-distribution-detail">
+        <div class="ledger-detail-head">
+          <strong>消费</strong>
+          <span>${isMonth ? "本月 -¥1,680" : "今日 -¥60"}</span>
+        </div>
+        <div class="ledger-dist-summary">
+          <div class="ledger-dist-donut expense"></div>
+          <div>
+            <strong>${isMonth ? "餐饮 ¥820" : "餐饮 ¥37"}</strong>
+            <span>${isMonth ? "本月餐饮占消费 49%，日常开销比较稳定" : "午餐与咖啡合计 ¥37，占今日支出的 62%"}</span>
+          </div>
+        </div>
+        <div class="ledger-distribution-preview detail">
+          ${isMonth ? ledgerDistributionItem("餐饮", 820, 1680, "food") : ledgerDistributionItem("餐饮", 37, 60, "food")}
+          ${isMonth ? ledgerDistributionItem("购物", 520, 1680, "shop") : ledgerDistributionItem("超市", 18, 60, "shop")}
+          ${isMonth ? ledgerDistributionItem("通勤", 340, 1680, "traffic") : ledgerDistributionItem("通勤", 5, 60, "traffic")}
+        </div>
+      </section>
+
+      <section class="glass ledger-distribution-detail income">
+        <div class="ledger-detail-head">
+          <strong>收入</strong>
+          <span>${isMonth ? "本月 +¥8,200" : "今日 +¥280"}</span>
+        </div>
+        <div class="ledger-dist-summary">
+          <div class="ledger-dist-donut income"></div>
+          <div>
+            <strong>${isMonth ? "工资收入 ¥7,200" : "兼职收入 ¥280"}</strong>
+            <span>${isMonth ? "工资与兼职构成本月主要收入，整体结余充足" : "今天有一笔兼职尾款入账，已计入收入"}</span>
+          </div>
+        </div>
+        <div class="ledger-distribution-preview detail income">
+          ${isMonth ? ledgerIncomeDistributionItem("工资", 7200, 8200, "salary") : ledgerIncomeDistributionItem("兼职", 280, 280, "parttime")}
+          ${isMonth ? ledgerIncomeDistributionItem("兼职", 800, 8200, "parttime") : ""}
+          ${isMonth ? ledgerIncomeDistributionItem("红包", 200, 8200, "gift") : ""}
+        </div>
+      </section>
+
+      <section class="glass ledger-list-card">
+        <div class="ledger-list-head"><strong>消费明细</strong><b>按金额</b></div>
+        <div class="ledger-expense-list">
+          ${ledgerExpenses().filter(item => item.kind !== "income").map(item => ledgerExpenseItem({ ...item, time: `${categoryName(item.tone)} · ${item.time}` })).join("")}
+        </div>
+      </section>
+
+      <section class="glass ledger-list-card">
+        <div class="ledger-list-head"><strong>收入明细</strong><b>${isMonth ? "+¥8,200" : "+¥280"}</b></div>
+        <div class="ledger-expense-list">
+          ${ledgerIncomeDetails(isMonth).map(ledgerExpenseItem).join("")}
+        </div>
+      </section>
+    </section>
+  `;
+}
+
+function categoryName(tone) {
+  return { food: "餐饮", shop: "购物", traffic: "通勤", coffee: "餐饮" }[tone] || "其他";
+}
+
+function ledgerIncomeDistributionItem(label, value, max, tone) {
+  const width = Math.max(9, Math.round((value / max) * 100));
+  return `<div class="ledger-dist-item income ${tone}"><span>${label}</span><div><i style="width:${width}%"></i></div><b>¥${value}</b></div>`;
+}
+
+function ledgerDayOptions() {
+  return Array.from({ length: 30 }, (_, index) => ({
+    day: index + 1,
+    active: index === 5
+  }));
+}
+
+function ledgerWeekHeader() {
+  return ["一", "二", "三", "四", "五", "六", "日"].map(day => `<b class="ledger-weekday">${day}</b>`).join("");
+}
+
+function ledgerDistributionDayOption(item) {
+  const classes = [item.active ? "active" : ""].filter(Boolean).join(" ");
+  return `<button class="${classes}" onclick="showToast('已选择 ${item.day}日')"><span>${item.day}</span></button>`;
+}
+
+function ledgerDistributionMonthOption(item) {
+  const disabled = item.disabled;
+  const classes = [
+    item.active ? "active" : "",
+    disabled ? "disabled" : ""
+  ].filter(Boolean).join(" ");
+  const click = disabled ? "" : ` onclick="showToast('已选择 ${item.month}月')"`;
+  return `<button class="${classes}"${disabled ? " disabled" : click}><span>${item.month}月</span></button>`;
+}
+
+function ledgerIncomeDetails(isMonth) {
+  if (isMonth) {
+    return [
+      { id: 21, title: "工资收入", time: "收入 · 06月01日", amount: 7200, tone: "income", kind: "income", note: "本月固定工资入账。" },
+      { id: 22, title: "兼职收入", time: "收入 · 06月06日", amount: 800, tone: "income", kind: "income", note: "设计稿尾款与零散项目收入。" },
+      { id: 23, title: "红包收入", time: "收入 · 06月03日", amount: 200, tone: "income", kind: "income", note: "朋友转入红包，已记入收入。" }
+    ];
+  }
+  return [
+    { id: 24, title: "兼职收入", time: "收入 · 10:00", amount: 280, tone: "income", kind: "income", note: "周末设计稿尾款入账，记为收入。" }
+  ];
+}
+
+function setLedgerDistributionMode(mode) {
+  state.ledgerDistributionMode = mode;
+  state.ledgerDistributionPickerOpen = false;
+  render();
+}
+
+function toggleLedgerDistributionPicker() {
+  state.ledgerDistributionPickerOpen = !state.ledgerDistributionPickerOpen;
+  const field = document.querySelector(".ledger-month-field.main.distribution");
+  const picker = document.querySelector(".ledger-period-picker");
+  if (!field || !picker) {
+    render();
+    return;
+  }
+  field.classList.toggle("open", state.ledgerDistributionPickerOpen);
+  picker.classList.toggle("show", state.ledgerDistributionPickerOpen);
 }
 
 function renderProfile() {
@@ -904,12 +1542,18 @@ function renderCreditCenter() {
 
 function render() {
   app.innerHTML = pages[state.route]();
+  if (ledgerFab) ledgerFab.classList.toggle("hidden", state.route !== "ledger");
+  if (state.route !== "ledger") state.ledgerAddSheetOpen = false;
+  renderLedgerSheet();
   tabs.forEach(tab => tab.classList.toggle("active", tab.dataset.route === state.route));
   if (state.route === "checkin" && window.CheckinFeature) {
     window.CheckinFeature.bindSwipe(delta => {
       state.checkinMonthOffset += delta;
       render();
     });
+  }
+  if (state.route === "ledger") {
+    bindLedgerSwipe();
   }
 }
 
@@ -932,6 +1576,20 @@ window.toggleReportOverview = toggleReportOverview;
 window.setReportLineMode = setReportLineMode;
 window.toggleFriendRank = toggleFriendRank;
 window.toggleFriendRankOrder = toggleFriendRankOrder;
+window.changeLedgerDate = changeLedgerDate;
+window.toggleLedgerBudget = toggleLedgerBudget;
+window.toggleLedgerDistribution = toggleLedgerDistribution;
+window.toggleLedgerExpense = toggleLedgerExpense;
+window.deleteLedgerExpense = deleteLedgerExpense;
+window.editLedgerNote = editLedgerNote;
+window.toggleLedgerMonthPicker = toggleLedgerMonthPicker;
+window.setLedgerDistributionMode = setLedgerDistributionMode;
+window.toggleLedgerDistributionPicker = toggleLedgerDistributionPicker;
+window.addLedgerExpense = addLedgerExpense;
+window.closeLedgerAddSheet = closeLedgerAddSheet;
+window.setLedgerAddType = setLedgerAddType;
+window.setLedgerAddCategory = setLedgerAddCategory;
+window.submitLedgerEntry = submitLedgerEntry;
 
 render();
 
