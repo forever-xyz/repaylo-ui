@@ -18,7 +18,13 @@
       </header>
       <div id="app" class="app"></div>
       <div id="ledgerSheet"></div>
-      <button id="ledgerFab" class="ledger-fab-fixed hidden" onclick="addLedgerExpense()" aria-label="添加收支">+</button>
+      <button id="ledgerFab" class="ledger-fab-fixed hidden"
+        onpointerdown="handleLedgerFabDown(event)"
+        onpointerup="handleLedgerFabUp(event)"
+        onpointerleave="handleLedgerFabCancel()"
+        onpointercancel="handleLedgerFabCancel()"
+        oncontextmenu="return false"
+        aria-label="添加收支">+</button>
       <nav class="tabbar" id="tabbar" aria-label="底部导航">
         <button data-route="home" class="tab active"><span>⌂</span><em>首页</em></button>
         <button data-route="reports" class="tab"><span>▦</span><em>报表</em></button>

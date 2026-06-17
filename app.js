@@ -29,6 +29,12 @@ const state = {
   ledgerAddSheetOpen: false,
   ledgerAddType: "expense",
   ledgerAddCategory: "other",
+  ledgerVoice: {
+    mode: "idle",
+    transcript: "",
+    seconds: 0,
+    draft: null
+  },
   ledgerExpandedExpenseId: null,
   ledgerSwipedExpenseId: null,
   ledgerDeletedExpenseIds: [],
@@ -38,6 +44,11 @@ const state = {
   expandedId: null,
   filters: { time: "全部", type: "全部", status: "全部", amount: "全部" }
 };
+
+let ledgerFabTimer = null;
+let ledgerFabLongPressed = false;
+let ledgerVoiceTimer = null;
+let ledgerVoiceClockTimer = null;
 
 const agreements = [
   { id: 1, avatar: "🐼", name: "小李同学", type: "出借", title: "项目周转", amount: 2000, status: "进行中", badge: "b-progress", date: "07-25", reason: "朋友创业项目急需周转，用于采购首批原材料。", remind: "周转顺利就好，有需要随时说。" },
@@ -1006,6 +1017,7 @@ function editLedgerNote(id) {
 }
 
 function addLedgerExpense() {
+  resetLedgerVoiceState();
   state.ledgerAddSheetOpen = true;
   renderLedgerSheet();
 }
@@ -1032,8 +1044,419 @@ function submitLedgerEntry() {
   showToast(state.ledgerAddType === "income" ? "收入已记录" : "支出已记录");
 }
 
+function handleLedgerFabDown(event) {
+  event.preventDefault();
+  ledgerFabLongPressed = false;
+  window.clearTimeout(ledgerFabTimer);
+  ledgerFabTimer = window.setTimeout(() => {
+    ledgerFabLongPressed = true;
+    startLedgerVoiceInput();
+  }, 540);
+}
+
+function handleLedgerFabUp(event) {
+  event.preventDefault();
+  window.clearTimeout(ledgerFabTimer);
+  if (ledgerFabLongPressed) {
+    finishLedgerVoiceInput();
+    return;
+  }
+  addLedgerExpense();
+}
+
+function handleLedgerFabCancel() {
+  window.clearTimeout(ledgerFabTimer);
+  if (ledgerFabLongPressed && state.ledgerVoice.mode === "listening") finishLedgerVoiceInput();
+}
+
+function startLedgerVoiceInput() {
+  window.clearInterval(ledgerVoiceTimer);
+  window.clearInterval(ledgerVoiceClockTimer);
+  state.ledgerAddSheetOpen = false;
+  state.ledgerVoice = { mode: "listening", transcript: "", seconds: 0, draft: null };
+  renderLedgerSheet();
+  showToast("按住说话，松开结束");
+  simulateLedgerRecognize();
+  startLedgerVoiceClock();
+}
+
+function startLedgerVoiceClock() {
+  ledgerVoiceClockTimer = window.setInterval(() => {
+    if (state.route !== "ledger" || state.ledgerVoice.mode !== "listening") {
+      window.clearInterval(ledgerVoiceClockTimer);
+      return;
+    }
+    state.ledgerVoice.seconds = Math.min(60, (state.ledgerVoice.seconds || 0) + 1);
+    const timer = document.querySelector("#ledgerVoiceTimer");
+    if (timer) timer.textContent = `${String(state.ledgerVoice.seconds).padStart(2, "0")} / 60s`;
+    if (state.ledgerVoice.seconds >= 60) finishLedgerVoiceInput();
+  }, 1000);
+}
+
+function simulateLedgerRecognize() {
+  const snippets = [
+    "今天中午请小李吃饭",
+    "今天中午请小李吃饭花了 128",
+    "今天中午请小李吃饭花了 128，下午打车 46",
+    "今天中午请小李吃饭花了 128，下午打车 46，备注项目沟通"
+  ];
+  let index = 0;
+  ledgerVoiceTimer = window.setInterval(() => {
+    if (state.route !== "ledger" || state.ledgerVoice.mode !== "listening") {
+      window.clearInterval(ledgerVoiceTimer);
+      return;
+    }
+    state.ledgerVoice.transcript = snippets[index];
+    const text = document.querySelector("#ledgerVoiceLiveText");
+    if (text) text.textContent = state.ledgerVoice.transcript;
+    index += 1;
+    if (index >= snippets.length) window.clearInterval(ledgerVoiceTimer);
+  }, 720);
+}
+
+function finishLedgerVoiceInput() {
+  if (state.ledgerVoice.mode !== "listening") return;
+  window.clearInterval(ledgerVoiceTimer);
+  window.clearInterval(ledgerVoiceClockTimer);
+  const transcript = limitLedgerVoiceText(state.ledgerVoice.transcript || "今天中午请小李吃饭花了 128，下午打车 46，备注项目沟通");
+  state.ledgerVoice = { ...state.ledgerVoice, mode: "review", transcript, draft: null };
+  renderLedgerSheet();
+}
+
+function limitLedgerVoiceText(value) {
+  return String(value || "").slice(0, 100);
+}
+
+function updateLedgerVoiceText(value) {
+  const transcript = limitLedgerVoiceText(value);
+  state.ledgerVoice.transcript = transcript;
+  const textarea = document.querySelector("#ledgerVoiceEditText");
+  if (textarea && textarea.value !== transcript) textarea.value = transcript;
+  const count = document.querySelector("#ledgerVoiceRemain");
+  if (count) count.textContent = String(100 - transcript.length);
+}
+
+function submitLedgerVoiceToBackend() {
+  window.clearInterval(ledgerVoiceTimer);
+  window.clearInterval(ledgerVoiceClockTimer);
+  const textarea = document.querySelector("#ledgerVoiceEditText");
+  const transcript = limitLedgerVoiceText((textarea && textarea.value) || state.ledgerVoice.transcript || "今天中午请小李吃饭花了 128，下午打车 46，备注项目沟通");
+  state.ledgerVoice = { ...state.ledgerVoice, mode: "parsing", transcript, draft: null };
+  renderLedgerSheet();
+  window.setTimeout(() => {
+    if (state.route !== "ledger" || state.ledgerVoice.mode !== "parsing") return;
+    state.ledgerVoice = {
+      mode: "confirm",
+      transcript,
+      seconds: state.ledgerVoice.seconds || 0,
+      editingIndex: null,
+      draft: {
+        count: 4,
+        items: [
+          { icon: "🍜", category: "餐饮", type: "支出", amount: "128", time: "2026-06-17 12:30", note: "请小李吃饭，项目沟通。" },
+          { icon: "🚗", category: "交通", type: "支出", amount: "46", time: "2026-06-17 15:20", note: "下午出行打车。" },
+          { icon: "💼", category: "兼职", type: "收入", amount: "280", time: "2026-06-16 20:10", note: "昨天设计稿尾款到账。" },
+          { icon: "🎁", category: "红包", type: "收入", amount: "66", time: "2026-06-16 21:05", note: "朋友转来的感谢红包。" }
+        ]
+      }
+    };
+    renderLedgerSheet();
+  }, 920);
+}
+
+function cancelLedgerVoiceInput() {
+  resetLedgerVoiceState();
+  renderLedgerSheet();
+}
+
+function confirmLedgerVoiceSave() {
+  resetLedgerVoiceState();
+  renderLedgerSheet();
+  showToast("AI 账单已保存");
+}
+
+function resetLedgerVoiceState() {
+  window.clearInterval(ledgerVoiceTimer);
+  window.clearInterval(ledgerVoiceClockTimer);
+  state.ledgerVoice = { mode: "idle", transcript: "", seconds: 0, draft: null };
+}
+
+function ledgerVoiceSheetTemplate() {
+  const voice = state.ledgerVoice;
+  if (voice.mode === "listening") {
+    return `
+      <div class="ledger-sheet-mask" onclick="cancelLedgerVoiceInput()"></div>
+      <section class="ledger-voice-sheet listening" role="dialog" aria-label="语音记账">
+        <div class="ledger-sheet-grabber"></div>
+        <div class="ledger-voice-head">
+          <div class="ledger-voice-orb"><i></i></div>
+          <div><strong>正在听你说</strong><span>实时语音识别中，松开后可编辑文字。</span></div>
+          <b class="ledger-voice-timer" id="ledgerVoiceTimer">${String(voice.seconds || 0).padStart(2, "0")} / 60s</b>
+        </div>
+        <div class="ledger-voice-wave" aria-hidden="true">
+          ${Array.from({ length: 17 }, (_, index) => `<i style="--i:${index}"></i>`).join("")}
+        </div>
+        <div class="ledger-voice-live" id="ledgerVoiceLiveText">${voice.transcript || "请开始说：今天中午吃饭花了..."}</div>
+        <div class="ledger-voice-hold-tip">按住录音中，松开结束</div>
+      </section>
+    `;
+  }
+  if (voice.mode === "review") {
+    const transcript = limitLedgerVoiceText(voice.transcript);
+    return `
+      <div class="ledger-sheet-mask" onclick="cancelLedgerVoiceInput()"></div>
+      <section class="ledger-voice-sheet review" role="dialog" aria-label="编辑语音识别文字">
+        <div class="ledger-sheet-grabber"></div>
+        <div class="ledger-review-title">
+          <span>识别完成 · ${String(voice.seconds || 0).padStart(2, "0")}s</span>
+          <strong>确认语音文字</strong>
+        </div>
+        <label class="ledger-voice-editor">
+          <textarea id="ledgerVoiceEditText" maxlength="100" oninput="updateLedgerVoiceText(this.value)" aria-label="编辑语音识别文字">${escapeHtml(transcript)}</textarea>
+          <em id="ledgerVoiceRemain">${100 - transcript.length}</em>
+        </label>
+        <div class="ledger-voice-actions">
+          <button onclick="cancelLedgerVoiceInput()">取消</button>
+          <button class="primary" onclick="submitLedgerVoiceToBackend()">发送</button>
+        </div>
+      </section>
+    `;
+  }
+  if (voice.mode === "parsing") {
+    return `
+      <div class="ledger-sheet-mask"></div>
+      <section class="ledger-voice-sheet parsing" role="dialog" aria-label="AI整理账单">
+        <div class="ledger-sheet-grabber"></div>
+        <div class="ledger-voice-head">
+          <div class="ledger-voice-orb thinking"><i></i></div>
+          <div><strong>后端 AI 正在整理</strong><span>正在识别金额、分类、时间和备注。</span></div>
+        </div>
+        <div class="ledger-ai-loading"><i></i></div>
+        <div class="ledger-voice-live compact">${escapeHtml(voice.transcript)}</div>
+      </section>
+    `;
+  }
+  return `
+    <div class="ledger-sheet-mask" onclick="cancelLedgerVoiceInput()"></div>
+    <section class="ledger-voice-sheet confirm" role="dialog" aria-label="确认AI账单">
+      <div class="ledger-sheet-grabber"></div>
+      <div class="ledger-ai-count-title">
+        <div class="ledger-ai-count"><strong>${voice.draft.count}</strong></div>
+        <div><span>请确认分类、金额和时间</span></div>
+      </div>
+      <div class="ledger-ai-source">“${escapeHtml(voice.transcript)}”</div>
+      <div class="ledger-ai-list">
+        ${voice.draft.items.map((item, index) => ledgerAiDraftItem(item, index)).join("")}
+      </div>
+      <div class="ledger-voice-actions">
+        <button onclick="cancelLedgerVoiceInput()">取消</button>
+        <button class="primary" onclick="confirmLedgerVoiceSave()">保存</button>
+      </div>
+    </section>
+  `;
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+function escapeValue(value) {
+  return escapeHtml(value).replace(/"/g, "&quot;");
+}
+
+function ledgerAiDraftItem(item, index) {
+  const tone = item.type === "收入" ? "income" : "expense";
+  return `
+    <article class="ledger-ai-item ${tone}" data-ai-index="${index}">
+      <div class="ledger-ai-row">
+        <i>${item.icon}</i>
+        <div><strong>${escapeHtml(item.category)}<small>${item.type}</small></strong><span>${escapeHtml(item.time)}</span><em>${escapeHtml(item.note)}</em></div>
+        <b>${ledgerAiAmountText(item)}</b>
+        <button class="ledger-ai-edit-btn" onclick="editLedgerAiDraft(${index})">修改</button>
+      </div>
+      ${ledgerAiEditForm(item, index)}
+    </article>
+  `;
+}
+
+function ledgerAiEditForm(item, index) {
+  return `
+    <div class="ledger-ai-edit-form">
+      <label><span>类型</span>${ledgerTypePicker(index, item)}</label>
+      <label><span>类别</span>${ledgerCategoryPicker(index, item)}</label>
+      <label><span>金额</span><input inputmode="decimal" value="${escapeValue(item.amount)}" oninput="updateLedgerAiDraft(${index}, 'amount', this.value)" /></label>
+      <div class="ledger-ai-fixed-time"><span>时间</span><b>${escapeHtml(item.time)}</b></div>
+      <label class="note"><span>备注</span><textarea oninput="updateLedgerAiDraft(${index}, 'note', this.value)">${escapeHtml(item.note)}</textarea></label>
+      <button onclick="finishLedgerAiDraftEdit()">修改</button>
+    </div>
+  `;
+}
+
+function editLedgerAiDraft(index) {
+  const current = document.querySelector(`.ledger-ai-item[data-ai-index="${index}"]`);
+  if (!current) return;
+  const isOpen = current.classList.contains("editing");
+  document.querySelectorAll(".ledger-ai-item.editing").forEach(item => {
+    item.classList.remove("editing");
+    const button = item.querySelector(".ledger-ai-edit-btn");
+    if (button) button.textContent = "修改";
+  });
+  if (!isOpen) {
+    current.classList.add("editing");
+    const button = current.querySelector(".ledger-ai-edit-btn");
+    if (button) button.textContent = "收起";
+  }
+}
+
+function updateLedgerAiDraft(index, key, value) {
+  const items = state.ledgerVoice.draft && state.ledgerVoice.draft.items;
+  if (!items || !items[index]) return;
+  items[index][key] = key === "amount" ? value.replace(/[^\d.]/g, "") : value;
+}
+
+function updateLedgerAiType(index, value, select) {
+  const items = state.ledgerVoice.draft && state.ledgerVoice.draft.items;
+  if (!items || !items[index]) return;
+  const firstCategory = ledgerCategoryOptions(value)[0];
+  items[index].type = value;
+  items[index].category = firstCategory.label;
+  items[index].icon = firstCategory.icon;
+  const form = select.closest(".ledger-ai-edit-form");
+  const typePicker = form && form.querySelector(".ledger-ai-type-picker");
+  if (typePicker) {
+    const valueNode = typePicker.querySelector(".ledger-ai-type-value b");
+    if (valueNode) valueNode.textContent = value;
+    typePicker.classList.remove("open");
+    typePicker.querySelectorAll(".ledger-ai-type-menu button").forEach(button => button.classList.toggle("active", button.textContent.trim() === value));
+  }
+  const picker = form && form.querySelector(".ledger-ai-category-picker");
+  if (picker) {
+    picker.outerHTML = ledgerCategoryPicker(index, items[index]);
+  }
+}
+
+function updateLedgerAiCategory(index, value) {
+  const items = state.ledgerVoice.draft && state.ledgerVoice.draft.items;
+  if (!items || !items[index]) return;
+  const selected = ledgerCategoryOptions(items[index].type).find(item => item.label === value);
+  items[index].category = value;
+  if (selected) items[index].icon = selected.icon;
+  const picker = document.querySelector(`.ledger-ai-category-picker[data-ai-index="${index}"]`);
+  if (picker && selected) {
+    const valueNode = picker.querySelector(".ledger-ai-category-value");
+    if (valueNode) valueNode.innerHTML = `<b>${escapeHtml(selected.label)}</b>`;
+    picker.classList.remove("open");
+  }
+}
+
+function finishLedgerAiDraftEdit() {
+  const current = document.querySelector(".ledger-ai-item.editing");
+  if (!current) return;
+  const index = Number(current.getAttribute("data-ai-index"));
+  const item = state.ledgerVoice.draft && state.ledgerVoice.draft.items[index];
+  if (!item) return;
+  current.classList.toggle("income", item.type === "收入");
+  current.classList.toggle("expense", item.type !== "收入");
+  const icon = current.querySelector(".ledger-ai-row > i");
+  const category = current.querySelector(".ledger-ai-row strong");
+  const time = current.querySelector(".ledger-ai-row span");
+  const note = current.querySelector(".ledger-ai-row em");
+  const amount = current.querySelector(".ledger-ai-row > b");
+  const button = current.querySelector(".ledger-ai-edit-btn");
+  if (icon) icon.textContent = item.icon;
+  if (category) category.innerHTML = `${escapeHtml(item.category)}<small>${item.type}</small>`;
+  if (time) time.textContent = item.time;
+  if (note) note.textContent = item.note;
+  if (amount) amount.textContent = ledgerAiAmountText(item).replace(/&amp;/g, "&");
+  if (button) button.textContent = "修改";
+  current.classList.remove("editing");
+}
+
+function ledgerAiAmountText(item) {
+  const prefix = item.type === "收入" ? "+" : "-";
+  return `${prefix}¥${escapeHtml(item.amount || "0")}`;
+}
+
+function ledgerCategoryOptions(type) {
+  return type === "收入"
+    ? [
+        { icon: "💰", label: "工资" },
+        { icon: "🎁", label: "红包" },
+        { icon: "💼", label: "兼职" },
+        { icon: "📈", label: "理财" },
+        { icon: "🏆", label: "奖励" },
+        { icon: "💵", label: "其它收入" }
+      ]
+    : [
+        { icon: "🍱", label: "餐饮" },
+        { icon: "🚇", label: "交通" },
+        { icon: "🛒", label: "购物" },
+        { icon: "🎮", label: "娱乐" },
+        { icon: "📚", label: "学习" },
+        { icon: "🏥", label: "医疗" },
+        { icon: "🏠", label: "住房" },
+        { icon: "🎁", label: "礼物" },
+        { icon: "✨", label: "其他" }
+      ];
+}
+
+function ledgerCategorySelectOptions(type, active) {
+  return ledgerCategoryOptions(type).map(item => `<option value="${escapeValue(item.label)}" ${item.label === active ? "selected" : ""}>${item.icon} ${item.label}</option>`).join("");
+}
+
+function ledgerCategoryPicker(index, item) {
+  const active = ledgerCategoryOptions(item.type).find(option => option.label === item.category) || ledgerCategoryOptions(item.type)[0];
+  return `
+    <div class="ledger-ai-category-picker" data-ai-index="${index}">
+      <button type="button" class="ledger-ai-category-value" onclick="toggleLedgerAiCategoryPicker(${index})"><b>${escapeHtml(active.label)}</b></button>
+      <div class="ledger-ai-category-menu">
+        ${ledgerCategoryOptions(item.type).map(option => `
+          <button type="button" class="${option.label === item.category ? "active" : ""}" onclick="updateLedgerAiCategory(${index}, '${escapeAttr(option.label)}')">
+            <span>${option.label}</span>
+          </button>
+        `).join("")}
+      </div>
+    </div>
+  `;
+}
+
+function ledgerTypePicker(index, item) {
+  const types = ["支出", "收入"];
+  return `
+    <div class="ledger-ai-type-picker" data-ai-index="${index}">
+      <button type="button" class="ledger-ai-type-value" onclick="toggleLedgerAiTypePicker(${index})"><b>${item.type}</b></button>
+      <div class="ledger-ai-type-menu">
+        ${types.map(type => `<button type="button" class="${type === item.type ? "active" : ""}" onclick="updateLedgerAiType(${index}, '${type}', this)">${type}</button>`).join("")}
+      </div>
+    </div>
+  `;
+}
+
+function toggleLedgerAiCategoryPicker(index) {
+  const picker = document.querySelector(`.ledger-ai-category-picker[data-ai-index="${index}"]`);
+  if (!picker) return;
+  const shouldOpen = !picker.classList.contains("open");
+  document.querySelectorAll(".ledger-ai-category-picker.open").forEach(item => item.classList.remove("open"));
+  picker.classList.toggle("open", shouldOpen);
+}
+
+function toggleLedgerAiTypePicker(index) {
+  const picker = document.querySelector(`.ledger-ai-type-picker[data-ai-index="${index}"]`);
+  if (!picker) return;
+  const shouldOpen = !picker.classList.contains("open");
+  document.querySelectorAll(".ledger-ai-type-picker.open, .ledger-ai-category-picker.open").forEach(item => item.classList.remove("open"));
+  picker.classList.toggle("open", shouldOpen);
+}
+
 function renderLedgerSheet(quiet = false) {
   if (!ledgerSheet) return;
+  if (state.ledgerVoice.mode !== "idle") {
+    ledgerSheet.innerHTML = ledgerVoiceSheetTemplate();
+    return;
+  }
   ledgerSheet.innerHTML = state.ledgerAddSheetOpen ? ledgerAddSheetTemplate(quiet) : "";
 }
 
@@ -1099,9 +1522,9 @@ function ledgerAddSheetTemplate(quiet = false) {
         <button class="ledger-add-to-list" onclick="showToast('已加入待保存列表')" aria-label="加入待保存">+</button>
       </div>
       <div class="ledger-pending-list">
-        ${ledgerPendingItem("🍱", "午餐", "支出 · 餐饮", "-¥30", "expense")}
-        ${ledgerPendingItem("🛒", "超市", "支出 · 购物", "-¥18", "expense")}
-        ${ledgerPendingItem("💰", "兼职", "收入 · 其他", "+¥280", "income")}
+        ${ledgerPendingItem({ icon: "🍱", category: "餐饮", type: "支出", time: "2026-06-17 12:30", note: "午餐简餐。", amount: "-¥30" })}
+        ${ledgerPendingItem({ icon: "🛒", category: "购物", type: "支出", time: "2026-06-17 18:40", note: "超市买牛奶和纸巾。", amount: "-¥18" })}
+        ${ledgerPendingItem({ icon: "💰", category: "其他", type: "收入", time: "2026-06-16 20:10", note: "兼职收入到账。", amount: "+¥280" })}
       </div>
       <div class="ledger-sheet-actions">
         <button onclick="closeLedgerAddSheet()">取消</button>
@@ -1111,12 +1534,13 @@ function ledgerAddSheetTemplate(quiet = false) {
   `;
 }
 
-function ledgerPendingItem(icon, title, meta, amount, tone) {
+function ledgerPendingItem(item) {
+  const tone = item.type === "收入" ? "income" : "expense";
   return `
     <article class="ledger-pending-item ${tone}">
-      <i>${icon}</i>
-      <div><strong>${title}</strong><span>${meta}</span></div>
-      <b>${amount}</b>
+      <i>${item.icon}</i>
+      <div><strong>${item.category}<small>${item.type}</small></strong><span>${item.time}</span><em>${item.note}</em></div>
+      <b>${item.amount}</b>
       <button onclick="showToast('已删除这条待保存')">×</button>
     </article>
   `;
@@ -1793,7 +2217,10 @@ function creditEvent(score, title, desc, tone) {
 function render() {
   app.innerHTML = pages[state.route]();
   if (ledgerFab) ledgerFab.classList.toggle("hidden", state.route !== "ledger");
-  if (state.route !== "ledger") state.ledgerAddSheetOpen = false;
+  if (state.route !== "ledger") {
+    state.ledgerAddSheetOpen = false;
+    resetLedgerVoiceState();
+  }
   renderLedgerSheet();
   tabs.forEach(tab => tab.classList.toggle("active", tab.dataset.route === state.route));
   if (state.route === "checkin" && window.CheckinFeature) {
@@ -1841,6 +2268,20 @@ window.closeLedgerAddSheet = closeLedgerAddSheet;
 window.setLedgerAddType = setLedgerAddType;
 window.setLedgerAddCategory = setLedgerAddCategory;
 window.submitLedgerEntry = submitLedgerEntry;
+window.handleLedgerFabDown = handleLedgerFabDown;
+window.handleLedgerFabUp = handleLedgerFabUp;
+window.handleLedgerFabCancel = handleLedgerFabCancel;
+window.submitLedgerVoiceToBackend = submitLedgerVoiceToBackend;
+window.cancelLedgerVoiceInput = cancelLedgerVoiceInput;
+window.confirmLedgerVoiceSave = confirmLedgerVoiceSave;
+window.updateLedgerVoiceText = updateLedgerVoiceText;
+window.editLedgerAiDraft = editLedgerAiDraft;
+window.updateLedgerAiDraft = updateLedgerAiDraft;
+window.updateLedgerAiType = updateLedgerAiType;
+window.updateLedgerAiCategory = updateLedgerAiCategory;
+window.toggleLedgerAiCategoryPicker = toggleLedgerAiCategoryPicker;
+window.toggleLedgerAiTypePicker = toggleLedgerAiTypePicker;
+window.finishLedgerAiDraftEdit = finishLedgerAiDraftEdit;
 
 render();
 
